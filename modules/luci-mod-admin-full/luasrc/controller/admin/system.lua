@@ -7,41 +7,69 @@ module("luci.controller.admin.system", package.seeall)
 function index()
 	local fs = require "nixio.fs"
 
-	entry({"admin", "system"}, alias("admin", "system", "system"), _("System"), 30).index = true
-	entry({"admin", "system", "system"}, cbi("admin_system/system"), _("System"), 1)
-	entry({"admin", "system", "clock_status"}, post_on({ set = true }, "action_clock_status"))
+         function user(val)
+	   if not fs.access("/usr/lib/lua/luci/users.lua") then return true end
 
-	entry({"admin", "system", "admin"}, cbi("admin_system/admin"), _("Administration"), 2)
+           local dsp = require "luci.dispatcher"
+           local usw = require "luci.users"
+           local user = dsp.get_user()
+           local idx = "system"
+	   if user == "root" then return true end
+	   local name = "system"
 
+	   local menu = {}
+	   menu = usw.hide_menus(user,name) or {}
+	   if menu and #menu > 1 then
+	     idx = menu[2]
+           else return false
+           end
+  	   for i,v in pairs(menu) do
+   	     if v == val then return true end
+  	   end
+  	   return false
+	  end
+
+	if user("System_menus") == true then
+	  entry({"admin", "system"}, alias("admin", "system", "..idx.."), _("System"), 30).index = true
+	end
+	if user("System") == true then
+	  entry({"admin", "system", "system"}, cbi("admin_system/system"), _("System"), 1)
+	  entry({"admin", "system", "clock_status"}, call("action_clock_status"))
+	end
+	if user("Administration") == true then
+	  entry({"admin", "system", "admin"}, cbi("admin_system/admin"), _("Administration"), 2)
+	end
+	if user("Software") == true then
 	if fs.access("/bin/opkg") then
-		entry({"admin", "system", "packages"}, post_on({ exec = "1" }, "action_packages"), _("Software"), 10)
-		entry({"admin", "system", "packages", "ipkg"}, form("admin_system/ipkg"))
+	  entry({"admin", "system", "packages"}, call("action_packages"), _("Software"), 10)
+	  entry({"admin", "system", "packages", "ipkg"}, form("admin_system/ipkg"))
 	end
-
-	entry({"admin", "system", "startup"}, form("admin_system/startup"), _("Startup"), 45)
-	entry({"admin", "system", "crontab"}, form("admin_system/crontab"), _("Scheduled Tasks"), 46)
-
+	end
+	if user("Startup") == true then
+	  entry({"admin", "system", "startup"}, form("admin_system/startup"), _("Startup"), 45)
+	end
+	if user("Scheduled_tasks") == true then
+	  entry({"admin", "system", "crontab"}, form("admin_system/crontab"), _("Scheduled Tasks"), 46)
+	end
+	if user("Mount_points") == true then
 	if fs.access("/sbin/block") then
-		entry({"admin", "system", "fstab"}, cbi("admin_system/fstab"), _("Mount Points"), 50)
-		entry({"admin", "system", "fstab", "mount"}, cbi("admin_system/fstab/mount"), nil).leaf = true
-		entry({"admin", "system", "fstab", "swap"},  cbi("admin_system/fstab/swap"),  nil).leaf = true
+	  entry({"admin", "system", "fstab"}, cbi("admin_system/fstab"), _("Mount Points"), 50)
+	  entry({"admin", "system", "fstab", "mount"}, cbi("admin_system/fstab/mount"), nil).leaf = true
+	  entry({"admin", "system", "fstab", "swap"},  cbi("admin_system/fstab/swap"),  nil).leaf = true
 	end
-
+	end
+	if user("Leds") == true then
 	if fs.access("/sys/class/leds") then
-		entry({"admin", "system", "leds"}, cbi("admin_system/leds"), _("<abbr title=\"Light Emitting Diode\">LED</abbr> Configuration"), 60)
+	  entry({"admin", "system", "leds"}, cbi("admin_system/leds"), _("<abbr title=\"Light Emitting Diode\">LED</abbr> Configuration"), 60)
 	end
-
-	entry({"admin", "system", "flashops"}, call("action_flashops"), _("Backup / Flash Firmware"), 70)
-	entry({"admin", "system", "flashops", "reset"}, post("action_reset"))
-	entry({"admin", "system", "flashops", "backup"}, post("action_backup"))
-	entry({"admin", "system", "flashops", "backupfiles"}, form("admin_system/backupfiles"))
-
-	-- call() instead of post() due to upload handling!
-	entry({"admin", "system", "flashops", "restore"}, call("action_restore"))
-	entry({"admin", "system", "flashops", "sysupgrade"}, call("action_sysupgrade"))
-
-	entry({"admin", "system", "reboot"}, template("admin_system/reboot"), _("Reboot"), 90)
-	entry({"admin", "system", "reboot", "call"}, post("action_reboot"))
+	end
+	if user("Firmware") == true then
+	  entry({"admin", "system", "flashops"}, call("action_flashops"), _("Backup / Flash Firmware"), 70)
+	  entry({"admin", "system", "flashops", "backupfiles"}, form("admin_system/backupfiles"))
+	end
+	if user("Reboot") == true then
+	  entry({"admin", "system", "reboot"}, call("action_reboot"), _("Reboot"), 90)
+	end
 end
 
 function action_clock_status()
