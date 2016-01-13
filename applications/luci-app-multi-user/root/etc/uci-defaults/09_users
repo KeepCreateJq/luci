@@ -1,0 +1,3 @@
+#!/bin/sh
+touch /etc/config/users
+exit 0
