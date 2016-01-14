@@ -25,35 +25,43 @@ function index()
   	   return false
 	  end
 
-	  entry({"admin", "status"}, alias("admin", "status", "overview"), _("Status"), 20).index = true
-	  entry({"admin", "status", "overview"}, template("admin_status/index"), _("Overview"), 1)
+	entry({"admin", "status"}, alias("admin", "status", "overview"), _("Status"), 20).index = true
+	entry({"admin", "status", "overview"}, template("admin_status/index"), _("Overview"), 1)
 
 	if user("Firewall") == true then
-	  entry({"admin", "status", "iptables"}, call("action_iptables"), _("Firewall"), 2).leaf = true
+	entry({"admin", "status", "iptables"}, template("admin_status/iptables"), _("Firewall"), 2).leaf = true
+	entry({"admin", "status", "iptables_action"}, post("action_iptables")).leaf = true
 	end
+
 	if user("Routes") == true then
-	  entry({"admin", "status", "routes"}, template("admin_status/routes"), _("Routes"), 3)
+	entry({"admin", "status", "routes"}, template("admin_status/routes"), _("Routes"), 3)
 	end
 	if user("System_log") == true then
-	  entry({"admin", "status", "syslog"}, call("action_syslog"), _("System Log"), 4)
+	entry({"admin", "status", "syslog"}, call("action_syslog"), _("System Log"), 4)
 	end
 	if user("Kernel_log") == true then
-	  entry({"admin", "status", "dmesg"}, call("action_dmesg"), _("Kernel Log"), 5)
+	entry({"admin", "status", "dmesg"}, call("action_dmesg"), _("Kernel Log"), 5)
 	end
 	if user("Processes") == true then
-	  entry({"admin", "status", "processes"}, cbi("admin_status/processes"), _("Processes"), 6)
+	entry({"admin", "status", "processes"}, cbi("admin_status/processes"), _("Processes"), 6)
 	end
+
 	if user("Realtime_graphs") == true then
-	  entry({"admin", "status", "realtime"}, alias("admin", "status", "realtime", "load"), _("Realtime Graphs"), 7)
-	  entry({"admin", "status", "realtime", "load"}, template("admin_status/load"), _("Load"), 1).leaf = true
-	  entry({"admin", "status", "realtime", "load_status"}, call("action_load")).leaf = true
-	  entry({"admin", "status", "realtime", "bandwidth"}, template("admin_status/bandwidth"), _("Traffic"), 2).leaf = true
-	  entry({"admin", "status", "realtime", "bandwidth_status"}, call("action_bandwidth")).leaf = true
-	  entry({"admin", "status", "realtime", "wireless"}, template("admin_status/wireless"), _("Wireless"), 3).leaf = true
-	  entry({"admin", "status", "realtime", "wireless_status"}, call("action_wireless")).leaf = true
-	  entry({"admin", "status", "realtime", "connections"}, template("admin_status/connections"), _("Connections"), 4).leaf = true
-	  entry({"admin", "status", "realtime", "connections_status"}, call("action_connections")).leaf = true
-	  entry({"admin", "status", "nameinfo"}, call("action_nameinfo")).leaf = true
+	entry({"admin", "status", "realtime"}, alias("admin", "status", "realtime", "load"), _("Realtime Graphs"), 7)
+
+	entry({"admin", "status", "realtime", "load"}, template("admin_status/load"), _("Load"), 1).leaf = true
+	entry({"admin", "status", "realtime", "load_status"}, call("action_load")).leaf = true
+
+	entry({"admin", "status", "realtime", "bandwidth"}, template("admin_status/bandwidth"), _("Traffic"), 2).leaf = true
+	entry({"admin", "status", "realtime", "bandwidth_status"}, call("action_bandwidth")).leaf = true
+
+	entry({"admin", "status", "realtime", "wireless"}, template("admin_status/wireless"), _("Wireless"), 3).leaf = true
+	entry({"admin", "status", "realtime", "wireless_status"}, call("action_wireless")).leaf = true
+
+	entry({"admin", "status", "realtime", "connections"}, template("admin_status/connections"), _("Connections"), 4).leaf = true
+	entry({"admin", "status", "realtime", "connections_status"}, call("action_connections")).leaf = true
+
+	entry({"admin", "status", "nameinfo"}, call("action_nameinfo")).leaf = true
 	end
 end
 
