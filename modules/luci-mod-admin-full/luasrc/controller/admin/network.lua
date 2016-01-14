@@ -7,9 +7,9 @@ module("luci.controller.admin.network", package.seeall)
 function index()
 	local uci = require("luci.model.uci").cursor()
 	local page
+
 	local fs = require "nixio.fs"
 
-	
           function user(val)
 	    if not fs.access("/usr/lib/lua/luci/users.lua") then return true end
 	    local menu = {}
@@ -29,15 +29,15 @@ function index()
   	    end
   	    return false
 	  end
-	
-	
+
 	if user("Network_menus") == true then
-	  page = node("admin", "network")
-	  page.target = firstchild()
-	  page.title  = _("Network")
-	  page.order  = 50
-	  page.index  = true
+	page = node("admin", "network")
+	page.target = firstchild()
+	page.title  = _("Network")
+	page.order  = 50
+	page.index  = true
 	end
+
 --	if page.inreq then
 		if user("Switch") == true then
 		local has_switch = false
@@ -47,7 +47,7 @@ function index()
 				has_switch = true
 				return false
 			end)
-		
+
 		if has_switch then
 			page  = node("admin", "network", "vlan")
 			page.target = cbi("admin_network/vlan")
@@ -58,8 +58,11 @@ function index()
 			page.leaf = true
 		end
 		end
+
+
 		if user("Wifi") == true then
 		local has_wifi = false
+
 		uci:foreach("wireless", "wifi-device",
 			function(s)
 				has_wifi = true
@@ -67,22 +70,22 @@ function index()
 			end)
 
 		if has_wifi then
-			page = entry({"admin", "network", "wireless_join"}, call("wifi_join"), nil)
+			page = entry({"admin", "network", "wireless_join"}, post("wifi_join"), nil)
 			page.leaf = true
 
-			page = entry({"admin", "network", "wireless_add"}, call("wifi_add"), nil)
+			page = entry({"admin", "network", "wireless_add"}, post("wifi_add"), nil)
 			page.leaf = true
 
-			page = entry({"admin", "network", "wireless_delete"}, call("wifi_delete"), nil)
+			page = entry({"admin", "network", "wireless_delete"}, post("wifi_delete"), nil)
 			page.leaf = true
 
 			page = entry({"admin", "network", "wireless_status"}, call("wifi_status"), nil)
 			page.leaf = true
 
-			page = entry({"admin", "network", "wireless_reconnect"}, call("wifi_reconnect"), nil)
+			page = entry({"admin", "network", "wireless_reconnect"}, post("wifi_reconnect"), nil)
 			page.leaf = true
 
-			page = entry({"admin", "network", "wireless_shutdown"}, call("wifi_shutdown"), nil)
+			page = entry({"admin", "network", "wireless_shutdown"}, post("wifi_shutdown"), nil)
 			page.leaf = true
 
 			page = entry({"admin", "network", "wireless"}, arcombine(template("admin_network/wifi_overview"), cbi("admin_network/wifi")), _("Wifi"), 15)
@@ -105,20 +108,22 @@ function index()
 			end
 		end
 		end
+
+
 		if user("Interfaces") == true then
 		page = entry({"admin", "network", "iface_add"}, cbi("admin_network/iface_add"), nil)
 		page.leaf = true
 
-		page = entry({"admin", "network", "iface_delete"}, call("iface_delete"), nil)
+		page = entry({"admin", "network", "iface_delete"}, post("iface_delete"), nil)
 		page.leaf = true
 
 		page = entry({"admin", "network", "iface_status"}, call("iface_status"), nil)
 		page.leaf = true
 
-		page = entry({"admin", "network", "iface_reconnect"}, call("iface_reconnect"), nil)
+		page = entry({"admin", "network", "iface_reconnect"}, post("iface_reconnect"), nil)
 		page.leaf = true
 
-		page = entry({"admin", "network", "iface_shutdown"}, call("iface_shutdown"), nil)
+		page = entry({"admin", "network", "iface_shutdown"}, post("iface_shutdown"), nil)
 		page.leaf = true
 
 		page = entry({"admin", "network", "network"}, arcombine(cbi("admin_network/network"), cbi("admin_network/ifaces")), _("Interfaces"), 10)
@@ -136,6 +141,8 @@ function index()
 				end)
 		end
 		end
+
+
 		if user("Dhcp") == true then
 		if nixio.fs.access("/etc/config/dhcp") then
 			page = node("admin", "network", "dhcp")
@@ -152,6 +159,7 @@ function index()
 			page.order  = 40
 		end
 		end
+
 		if user("Routes") == true then
 		page  = node("admin", "network", "routes")
 		page.target = cbi("admin_network/routes")
@@ -165,19 +173,19 @@ function index()
 		page.title  = _("Diagnostics")
 		page.order  = 60
 
-		page = entry({"admin", "network", "diag_ping"}, call("diag_ping"), nil)
+		page = entry({"admin", "network", "diag_ping"}, post("diag_ping"), nil)
 		page.leaf = true
 
-		page = entry({"admin", "network", "diag_nslookup"}, call("diag_nslookup"), nil)
+		page = entry({"admin", "network", "diag_nslookup"}, post("diag_nslookup"), nil)
 		page.leaf = true
 
-		page = entry({"admin", "network", "diag_traceroute"}, call("diag_traceroute"), nil)
+		page = entry({"admin", "network", "diag_traceroute"}, post("diag_traceroute"), nil)
 		page.leaf = true
 
-		page = entry({"admin", "network", "diag_ping6"}, call("diag_ping6"), nil)
+		page = entry({"admin", "network", "diag_ping6"}, post("diag_ping6"), nil)
 		page.leaf = true
 
-		page = entry({"admin", "network", "diag_traceroute6"}, call("diag_traceroute6"), nil)
+		page = entry({"admin", "network", "diag_traceroute6"}, post("diag_traceroute6"), nil)
 		page.leaf = true
 		end
 --	end
