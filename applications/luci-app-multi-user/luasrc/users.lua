@@ -42,14 +42,6 @@ function users:new(user)
 	return user
 end
 
---## create user menu buffers ##--
-function make_buf(str,buf)
-  for word in string.gmatch(str, "[^%s]+") do
-   buf[#buf+1] = word
-  end
- return buf
-end
-
 --## login function to provide valid usernames, used by dispatcher,index and serviceclt ##--
 function login()
    local users = assert(io.open("/etc/passwd", "r"))
@@ -90,37 +82,11 @@ function process_ui_user(tbuf)
 	   shell = v:sub(v:find("option")+14,-2)
 	   nbuf["shell"]=shell
 	  end
-	  if v:find("Status_menus") then
-	   status_menu = v:sub(v:find("option")+21,-2)
-	   make_buf(status_menu, status)
-	  end
-	   if v:find("System_menus") then
-	   system_menu = v:sub(v:find("option")+21,-2)
-	   make_buf(system_menu, system)
-	  end
-	   if v:find("Network_menus") then
-	   network_menu = v:sub(v:find("option")+22,-2)
-	   make_buf(network_menu, network)
-	  end
-	   if v:find("status_subs") then
-	   status_subs = v:sub(v:find("option")+20,-2)
-	   make_buf(status_subs, status)
-	  end
-	   if v:find("system_subs") then
-	   system_subs = v:sub(v:find("option")+20,-2)
-	   make_buf(system_subs, system)
-	  end
-	  if v:find("network_subs") then
-	   network_subs = v:sub(v:find("option")+21,-2)
-	   make_buf(network_subs, network)
-	  end
 	end
 
-	user = users:new({ name = nbuf.name, user_group = nbuf.user_group, shell = nbuf.shell,
-		           status = status, system = system, network = network })
+	user = users:new({ name = nbuf.name, user_group = nbuf.user_group, shell = nbuf.shell })
 
-	ui_users[user.name] = { user_group = nbuf.user_group, shell = nbuf.shell, 
-				status = status, system = system, network = network }  --## add user and info to ui_users buffer
+	ui_users[user.name] = { user_group = nbuf.user_group, shell = nbuf.shell }  --## add user and info to ui_users buffer
 
 	ui_usernames[#ui_usernames+1]=user.name --## keep track of ui_usernames
 end
@@ -132,23 +98,23 @@ function load_ui_user_file()
   local buft = {}
   local i = 1
 
-	for line in file:lines() do
-	  if line ~= nil then
-	   buf[i]=line
-	   i = i + 1
-	  end
-	end
-	file:close()
-	for i=1, #buf do
-	  if buf[i]:find("config user") then
-	   j = 1
-	   repeat
-	   buft[j]= buf[i+j]
-	   j = j + 1
-	   until buf[j] ==  ""
-	   process_ui_user(buft) --## send user to be added to ui_users 
-	  end
-	end
+  for line in file:lines() do
+    if line ~= nil then
+      buf[i]=line
+      i = i + 1
+    end
+  end
+  file:close()
+  for i=1, #buf do
+    if buf[i]:find("config user") then
+      j = 1
+      repeat
+        buft[j]= buf[i+j]
+        j = j + 1
+      until buf[j] ==  ""
+      process_ui_user(buft) --## send user to be added to ui_users 
+    end
+  end
 end
 
 --## function to load users from "/etc/passwd" file into sys_usernames buffer ##--
@@ -157,118 +123,116 @@ function load_sys_user_file()
   local line = ""
   local i = 1
 
-	for line in file:lines() do
-	  if line and line ~= "" then
-	   line = line:sub(1, line:find(":")-1)
-	    if line ~= "root" and line ~= "daemon" and line ~= "network" and line ~= "nobody" and line ~= "ftp" then
-	     sys_usernames[i] = line
-	     i = i + 1
-		  end
-	  end
-	end
+  for line in file:lines() do
+    if line and line ~= "" then
+      line = line:sub(1, line:find(":")-1)
+      if line ~= "root" and line ~= "daemon" and line ~= "network" and line ~= "nobody" and line ~= "ftp" then
+        sys_usernames[i] = line
+        i = i + 1
+      end
+    end
+  end
   file:close()
 end
 
 --## function to find new users and add them to the system (checks if shell has changed too) ##--
 function add_users()
   local x = 1
-
-	repeat
-	  for i,v in pairs(ui_usernames) do
-		tmp_name = v
-		for j,k in pairs(sys_usernames) do
-		  if tmp_name == k then is_user = true end
-		end
-		if is_user then 
-		  if ui_users[tmp_name].shell == "1" then 
-		    check_shell(tmp_name,true)
-		  else
-		    check_shell(tmp_name,false)
-		  end 
-		end
-		if not is_user then 
-		  create_user(tmp_name,ui_users[tmp_name].shell,ui_users[tmp_name].user_group) 
-		end
-		is_user = false
-		x = x + 1
-	  end
-	until x > #ui_usernames
+  repeat
+    for i,v in pairs(ui_usernames) do
+      tmp_name = v
+      for j,k in pairs(sys_usernames) do
+        if tmp_name == k then is_user = true end
+      end
+      if is_user then 
+        if ui_users[tmp_name].shell == "1" then 
+          check_shell(tmp_name,true)
+        else
+          check_shell(tmp_name,false)
+        end 
+      end
+      if not is_user then 
+        create_user(tmp_name,ui_users[tmp_name].shell,ui_users[tmp_name].user_group) 
+      end
+      is_user = false
+      x = x + 1
+    end
+  until x > #ui_usernames
 end
 
 --## function to find deleted users and remove them from the system ##--
 function del_users()
   local tmp_name
   local x = 1
-
-	repeat
-	  for i,v in pairs(sys_usernames) do
-	    tmp_name = v
-	    for j,k in pairs(ui_usernames) do
-	      if tmp_name == k then 
-		      is_user = true 
-		    end
-	    end
-	    if not is_user then 
-		    remove_user(tmp_name) 
-		  end
-	    is_user = false
-	    x = x + 1
-	  end
-	until x > #sys_usernames
+  repeat
+    for i,v in pairs(sys_usernames) do
+      tmp_name = v
+      for j,k in pairs(ui_usernames) do
+        if tmp_name == k then 
+          is_user = true 
+        end
+      end
+      if not is_user then 
+        remove_user(tmp_name) 
+      end
+      is_user = false
+      x = x + 1
+    end
+  until x > #sys_usernames
 end
 
 --## function to add user to system ##--
 function create_user(user,shell,group)
-	if shell == '1' then 
-	  shell = "/bin/ash" 
-	else 
-	  shell = "/bin/false" 
-	end
-	  check_user(user, group, shell)
-	  setpasswd(user)
+  if shell == '1' then 
+    shell = "/bin/ash" 
+  else 
+    shell = "/bin/false" 
+  end
+  check_user(user, group, shell)
+  setpasswd(user)
 end
 
 --## function to remove user from system ##--
 function remove_user(user)
-	delete_user(user)
+  delete_user(user)
 end
 
 --## function to check if user gets ssh access (shell or not) ##--
 function check_shell(user,has_shell)
-	 local file = assert(io.open(passwd, "r"))
-	 local line = ""
-	 local shell
-	 local i = 1
-	 local buf = {}
+  local file = assert(io.open(passwd, "r"))
+  local line = ""
+  local shell
+  local i = 1
+  local buf = {}
 
-	   for line in file:lines() do
-	    if line and line ~= "" then
-	     buf[i]=line
-	     if line:find(user) then
-              shell = line:sub(line:find(":/bin/")+1,-1)
-	     end
-             i = i + 1
-	    end
-           end
-	   file:close()
-	   if has_shell and shell ~= "/bin/ash" then
-	    for i = 1, #buf do
-	     if buf[i]:find(user) then
-              buf[i]=buf[i]:gsub("/bin/false", "/bin/ash")
-             end
-	    end
-   	   elseif not has_shell and shell ~= "/bin/false" then
-   	    for i = 1, #buf do
-	     if buf[i]:find(user) then
-              buf[i]=buf[i]:gsub("/bin/ash", "/bin/false")
-             end
-	    end
-	   end
-	   file = assert(io.open(passwd, "w+"))
-	   for k,v in pairs(buf) do
-            file:write(v.."\n")
-	   end
-	   file:close()
+  for line in file:lines() do
+    if line and line ~= "" then
+      buf[i]=line
+      if line:find(user) then
+        shell = line:sub(line:find(":/bin/")+1,-1)
+      end
+      i = i + 1
+    end
+  end
+  file:close()
+  if has_shell and shell ~= "/bin/ash" then
+    for i = 1, #buf do
+      if buf[i]:find(user) then
+        buf[i]=buf[i]:gsub("/bin/false", "/bin/ash")
+      end
+    end
+  elseif not has_shell and shell ~= "/bin/false" then
+    for i = 1, #buf do
+      if buf[i]:find(user) then
+        buf[i]=buf[i]:gsub("/bin/ash", "/bin/false")
+      end
+    end
+  end
+  file = assert(io.open(passwd, "w+"))
+  for k,v in pairs(buf) do
+    file:write(v.."\n")
+  end
+  file:close()
 end
 
 --## LOAD USERS CONFIG IN TO BUFFER IN UCI FORMAT ##--
@@ -343,15 +307,13 @@ end
 --## function to set default password for new users ##--
 --## duplicate of luci set password only a default password is set(openwrt)
 function setpasswd(username,password)
-	if not password then password = "openwrt" end
-		password = password:gsub("'", [['"'"']])
+  if not password then password = "openwrt" end
+  password = password:gsub("'", [['"'"']])
 
-
-	if username then
-		username = username:gsub("'", [['"'"']])
-	end
-
-	return os.execute(
+  if username then
+    username = username:gsub("'", [['"'"']])
+  end
+  return os.execute(
 		"(echo '" .. password .. "'; sleep 1; echo '" .. password .. "') | " ..
 		"passwd '" .. username .. "' >/dev/null 2>&1"
 	)
@@ -378,14 +340,14 @@ end
 
 --## function to check if path is a file ##--
 local function isFile(name)
-    if type(name)~="string" then return false end
-    if not exists(name) then return false end
-    local f = io.open(name)
-    if f then
-        f:close()
-        return true
-    end
-    return false
+  if type(name)~="string" then return false end
+  if not exists(name) then return false end
+  local f = io.open(name)
+  if f then
+    f:close()
+   return true
+  end
+ return false
 end
 
 --## function to check if path is a directory ##--
@@ -412,9 +374,9 @@ function get_uid(group)
   for line in file:lines() do
     if line:match(pat_uid) then
       line = line:match(pat_uid)
- 			uid = line:sub(2,5)
- 			t[i] = uid
-  	  i = i + 1
+      uid = line:sub(2,5)
+      t[i] = uid
+      i = i + 1
     end
   end
   file:close()
@@ -432,9 +394,9 @@ end
 
 --## functio to prepare users home dir ##--
 function create_homedir(name)
-    local home = "/home/"
-    local homedir = home .. name
-  return homedir
+  local home = "/home/"
+  local homedir = home .. name
+ return homedir
 end
 
 --## function add user to passwds ##--
@@ -443,16 +405,16 @@ function add_passwd(name,uid,shell,homdir)
   local nuser = "\n"..name..":x:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
   local nuser2 = "\n"..name..":*:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
 
-	if checkit(name, file) then
-      file:write(nuser)
-	  file:close()
-	  file = assert(io.open(passwd2, "a"))
-	  file:write(nuser2)
-	  file:close()
+  if checkit(name, file) then
+    file:write(nuser)
+    file:close()
+    file = assert(io.open(passwd2, "a"))
+    file:write(nuser2)
+    file:close()
   else
-	  if(debug > 0) then print("Error { User Already Exists !! }") end
-	  fs.writefile("/tmp/multi.stderr", "Error { User Already Exist !! }")
-	 return 1
+    if(debug > 0) then print("Error { User Already Exists !! }") end
+    fs.writefile("/tmp/multi.stderr", "Error { User Already Exist !! }")
+    return 1
   end
 end
 
@@ -461,16 +423,16 @@ function add_shadow(name)
   local file = assert(io.open(shadow, "a"))
   local shad = "\n"..name..":*:11647:0:99999:7:::"
 
-	if checkit(name, file) then
-	  file:write(shad)
-	  file:close()
-	  file = assert(io.open(shadow2, "a"))
-	  file:write(shad)
-	  file:close()
-    else
-	  if(debug > 0) then print("Error { User Already Exists !! }") end
-	  fs.writefile("/tmp/multi.stderr", "Error { User Already Exists !! }")
-	 return 1
+  if checkit(name, file) then
+    file:write(shad)
+    file:close()
+    file = assert(io.open(shadow2, "a"))
+    file:write(shad)
+    file:close()
+  else
+    if(debug > 0) then print("Error { User Already Exists !! }") end
+    fs.writefile("/tmp/multi.stderr", "Error { User Already Exists !! }")
+    return 1
   end
 end
 
@@ -479,56 +441,53 @@ function add_group(name,uid)
   local grp = "\n"..name..":x:"..uid..":"..name
   local file = assert(io.open(groupy, "a"))
 
-	if checkit(name, file) then
-	  file:write(grp)
-	  file:close()
-	else
-	  if(debug > 0) then print("Error { User Already Exists !! }") end
-	  fs.writefile("/tmp/multi.stderr", "Error { User Already Exists !! }")
-	 return 1
-	end
+  if checkit(name, file) then
+    file:write(grp)
+    file:close()
+  else
+    if(debug > 0) then print("Error { User Already Exists !! }") end
+    fs.writefile("/tmp/multi.stderr", "Error { User Already Exists !! }")
+    return 1
+  end
 end
 
 --## make the users home directory and set permissions to (755) ##--
 function make_home_dirs(homedir)
-	local home = "/home"
+  local home = "/home"
 
-	if not isDir(home) then
-	  fs.mkdir(home, 755)
-	end
-
-   if not isDir(homedir) then
-      fs.mkdir(homedir, 755)
-   end
-
-	local cmd = "find "..homedir.." -print | xargs chown "..name..":"..name
-	os.execute(cmd)
+  if not isDir(home) then
+    fs.mkdir(home, 755)
+  end
+  if not isDir(homedir) then
+    fs.mkdir(homedir, 755)
+  end
+  local cmd = "find "..homedir.." -print | xargs chown "..name..":"..name
+  os.execute(cmd)
 end
 
 --## function to check if user is valid ##--
 function check_user(name, group, shell)
-	if not checkit(name) then
-      if(debug > 0) then print("Error { User Already Exists !! }") end
-      fs.writefile("/tmp/multi.stderr", "Error { User Already Exists !! }")
-	 return 1
-	elseif not name and pass and uid and shell then
-      if(debug > 0) then print("Error { Not Enough Parameters !! }") end
-      fs.writefile("/tmp/multi.stderr", "Error { Not Enough Parameters !! }")
-	 return 1
-	else
-	 add_user(name, group, shell)
+  if not checkit(name) then
+    if(debug > 0) then print("Error { User Already Exists !! }") end
+    fs.writefile("/tmp/multi.stderr", "Error { User Already Exists !! }")
+    return 1
+  elseif not name and pass and uid and shell then
+    if(debug > 0) then print("Error { Not Enough Parameters !! }") end
+    fs.writefile("/tmp/multi.stderr", "Error { Not Enough Parameters !! }")
+    return 1
+  else
+    add_user(name, group, shell)
   end
 end
 
 --## function to add user to the system  ##--
 function add_user(name, group, shell)
-	local uid = get_uid(group)
-	homedir = create_homedir(name)
-
-	add_passwd(name,uid,shell,homedir)
-	add_shadow(name)
-	add_group(name,uid)
-	make_home_dirs(homedir)
+  local uid = get_uid(group)
+  homedir = create_homedir(name)
+  add_passwd(name,uid,shell,homedir)
+  add_shadow(name)
+  add_group(name,uid)
+  make_home_dirs(homedir)
 end
 
 
@@ -539,23 +498,23 @@ function load_file(name, buf)
   local i = 1
   local file = io.open(name, "r")
 
-	for line in file:lines() do
-	  buf[i] = line
-	  if debug > 0 then print(buf[i]) end
-	  i = i + 1
-	end
-	file:close()
-	return(buf)
+  for line in file:lines() do
+    buf[i] = line
+    if debug > 0 then print(buf[i]) end
+    i = i + 1
+  end
+  file:close()
+ return(buf)
 end
 
 --## function to remove user from buffer ##--
 function rem_user(user, buf)
-	for i,v in pairs(buf) do
-	  if v:find(user) then
-	    table.remove(buf,i)
-	  end
-	end
-	return(buf)
+  for i,v in pairs(buf) do
+    if v:find(user) then
+      table.remove(buf,i)
+    end
+  end
+ return(buf)
 end
 
 --## function to write buffer back to file ##--
@@ -563,36 +522,36 @@ function write_file(name, buf)
   local file = io.open(name, "w")
 
   for i,v in pairs(buf) do
-		if debug > 0 then print(v) end
+    if debug > 0 then print(v) end
     if(i < #buf) then
-	    file:write(v.."\n")
-	  else
-	    file:write(v)
-	  end
-	end
-	file:close()
+      file:write(v.."\n")
+    else
+      file:write(v)
+    end
+  end
+  file:close()
 end
 
 --## function remove user from the system ##--
 function delete_user(user)
   local buf = { ["passwd"] = {}, ["shadow"] = {}, ["group"] = {} }
 
-	--## load files into indexed buffers ##--
-	load_file(passwd, buf.passwd)
-	load_file(shadow, buf.shadow)
-	load_file(groupy, buf.group)
+  --## load files into indexed buffers ##--
+  load_file(passwd, buf.passwd)
+  load_file(shadow, buf.shadow)
+  load_file(groupy, buf.group)
 
-	--## remove user from buffers ##--
-	rem_user(user, buf.passwd)
-	rem_user(user, buf.shadow)
-	rem_user(user, buf.group)
+  --## remove user from buffers ##--
+  rem_user(user, buf.passwd)
+  rem_user(user, buf.shadow)
+  rem_user(user, buf.group)
 
-	--## write edited buffers back to the files ##--
-	write_file(passwd, buf.passwd)
-	write_file(passwd2, buf.passwd)
-	write_file(shadow, buf.shadow)
-	write_file(shadow2, buf.shadow)
-	write_file(groupy, buf.group)
-	luci.sys.call("rm /home/"..user.."/*")
-	fs.rmdir("/home/"..user)
+  --## write edited buffers back to the files ##--
+  write_file(passwd, buf.passwd)
+  write_file(passwd2, buf.passwd)
+  write_file(shadow, buf.shadow)
+  write_file(shadow2, buf.shadow)
+  write_file(groupy, buf.group)
+  luci.sys.call("rm /home/"..user.."/*")
+  fs.rmdir("/home/"..user)
 end
