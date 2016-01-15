@@ -15,7 +15,7 @@ function index()
            local user = dsp.get_user()
            local idx = "system"
 	   if user == "root" then return true end
-	   local name = "system"
+	   local name = "System"
 
 	   local menu = {}
 	   menu = usw.hide_menus(user,name) or {}
