@@ -14,7 +14,7 @@ function index()
            local usw = require "luci.users"
            local user = dsp.get_user()
 	   if user == "root" then return true end
-           local name = "status"
+           local name = "Status"
 
 	   local menu = {}
 	   menu = usw.hide_menus(user,name) or {}
