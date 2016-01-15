@@ -271,15 +271,73 @@ function check_shell(user,has_shell)
 	   file:close()
 end
 
---## function used by dispatcher to remove specified menus from index tree ##--
---## Called by disatcher to determine what menus should be visible ##-- 
-function hide_menus(user,name)
-	  if user == nil or user == "nobody" then return end
-	  if name ~= "status" and name ~= "system" and name ~= "network" then return end
-	    local x = 1
-	    load_ui_user_file()
-	    menus = ui_users[user][name]
-	  return(menus)
+--## LOAD USERS CONFIG IN TO BUFFER IN UCI FORMAT ##--
+local function load_config()
+  local config = {}
+  local file = io.popen("uci show users")
+  local i = 1
+
+  for line in file:lines() do 
+    config[i]=line
+    i = i + 1
+  end
+  file:close()
+ return config
+end
+
+--## SPLIT STR INDIVIDUAL TABLE ELEMENTS ##--
+local function load_buf(str)
+  local buf = {}
+  for word in string.gmatch(str, "[^%s]+") do
+   buf[#buf+1] = word
+  end
+ return buf
+end
+
+--## DETERMINE THE SECTION NUMBER OF USER ##--
+local function get_section(user)
+  local config = load_config()
+  local section
+  for i,v in pairs(config) do
+    if v:find(user) then
+      section = v:sub(v:find("%[")+1,v:find("]")-1)
+    end 
+  end
+ return section
+end
+
+--## IF MENU ENABLED LOAD SUB-MENUS ##--
+local function get_subs(user,menu,section)
+  local menu_name = menu .. "_subs"
+  --print(string.format("uci get users.@user[%s].%s\n", section,menu_name))
+  local file = io.popen(string.format("uci get users.@user[%s].%s", section,menu_name))
+  local str = file:read("*l")
+  file:close()
+  return str 
+end
+
+--## GET THE STATUS OF THE MENU ##--
+local function get_menus(user,menu,section)
+  local menu_name = menu .. "_menus"
+  local buf = {}
+  --print(string.format("uci get users.@user[%s].%s\n", section,menu_name))
+  local file = io.popen(string.format("uci get users.@user[%s].%s", section,menu_name))
+  local str = file:read("*l")
+  file:close()
+  if str and str ~= "disabled" then
+    str = str .. " " ..get_subs(user,menu,section)
+    buf = load_buf(str)
+  end
+ return buf
+end
+
+function hide_menus(user,menu)
+  if user == "nobody" then return false end
+  if user == "root" then return true end
+  local menus = {}
+  local section = get_section(user)
+  local menus = get_menus(user,menu,section)
+  return menus
 end
 
 --## function to set default password for new users ##--
