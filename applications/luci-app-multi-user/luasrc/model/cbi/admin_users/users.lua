@@ -48,7 +48,7 @@ o.rmempty = true
 o.disabled = "disabled" 
 o.enabled = "Status_menus"
 
-status_subs = s:taboption("status", MultiValue, "status_subs", translate("Status Menus"))
+status_subs = s:taboption("status", MultiValue, "Status_subs", translate("Status Menus"))
 status_subs.rmempty = true
 status_subs:depends("Status_menus", "Status_menus")
 --status_subs:value("Overview", "Overview")
@@ -64,7 +64,7 @@ o.rmempty = true
 o.disabled = "disabled" 
 o.enabled = "System_menus"
 
-system_subs = s:taboption("system", MultiValue, "system_subs", translate("System Menus"))
+system_subs = s:taboption("system", MultiValue, "System_subs", translate("System Menus"))
 system_subs.rmempty = true
 system_subs:depends("System_menus", "System_menus")
 system_subs:value("System", "System")
@@ -81,7 +81,7 @@ o.rmempty = true
 o.disabled = "disabled" 
 o.enabled = "Network_menus"
 
-network_subs = s:taboption("network", MultiValue, "network_subs", translate("Network Menus"))
+network_subs = s:taboption("network", MultiValue, "Network_subs", translate("Network Menus"))
 network_subs.rmempty = true
 network_subs:depends("Network_menus", "Network_menus")
 network_subs:value("Interfaces", "Interfaces")
