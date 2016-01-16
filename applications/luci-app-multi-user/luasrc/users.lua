@@ -1,4 +1,3 @@
-
 -- luci/openwrt multi user implementation V2 --
 -- users.lua by Hostle 01/13/2016 --
 
@@ -6,9 +5,11 @@ module("luci.users", package.seeall)
 
 --## General dependents ##--
 require "luci.sys"
+require("uci")
 
 --## Add/Remove User files and dependants ##--
 local fs = require "nixio.fs"
+local uci = uci.cursor()
 local passwd = "/etc/passwd"
 local passwd2 = "/etc/passwd-"
 local shadow = "/etc/shadow"
@@ -44,19 +45,12 @@ end
 
 --## login function to provide valid usernames, used by dispatcher,index and serviceclt ##--
 function login()
-   local users = assert(io.open("/etc/passwd", "r"))
-   local i = 1
-
-   for line in users:lines() do
-    if line and line ~= "" then
-      line = line:sub(1, line:find(":")-1)
-       if line ~= "daemon" and line ~= "network" and line ~= "nobody" then
-        valid_users[i] = line
-        i = i + 1
-      end
-    end
-   end
-   users:close()
+local i, pwent
+for i, pwent in ipairs(nixio.getpw()) do
+  if pwent.uid == 0 or (pwent.uid >= 1000 and pwent.uid < 65534) then
+    valid_users[i] = pwent.name
+  end
+end
   return valid_users
 end
 
@@ -235,18 +229,15 @@ function check_shell(user,has_shell)
   file:close()
 end
 
---## LOAD USERS CONFIG IN TO BUFFER IN UCI FORMAT ##--
-local function load_config()
-  local config = {}
-  local file = io.popen("uci show users")
-  local i = 1
-
-  for line in file:lines() do 
-    config[i]=line
+--## DETERMINE THE SECTION NUMBER OF USER ##--
+local function get_section(username)
+  local i = 0
+  repeat
+    name = uci:get("users.@user["..i.."].name")
     i = i + 1
-  end
-  file:close()
- return config
+  until name == username
+  section = i - 1 
+ return section
 end
 
 --## SPLIT STR INDIVIDUAL TABLE ELEMENTS ##--
@@ -258,134 +249,67 @@ local function load_buf(str)
  return buf
 end
 
---## DETERMINE THE SECTION NUMBER OF USER ##--
-local function get_section(user)
-  local config = load_config()
-  local section
-  for i,v in pairs(config) do
-    if v:find(user) then
-      section = v:sub(v:find("%[")+1,v:find("]")-1)
-    end 
-  end
- return section
+--## GET MENU SUB ##--
+local function get_menu_subs(user,sec,menu)
+  local menu_name = menu .."_subs"
+  local str = uci:get("users.@user["..sec.."]."..menu_name)
+ return str
 end
 
---## IF MENU ENABLED LOAD SUB-MENUS ##--
-local function get_subs(user,menu,section)
-  local menu_name = menu .. "_subs"
-  --print(string.format("uci get users.@user[%s].%s\n", section,menu_name))
-  local file = io.popen(string.format("uci get users.@user[%s].%s", section,menu_name))
-  local str = file:read("*l")
-  file:close()
-  return str 
+--## GET MENU STATUS ##--
+function get_menu_status(user,sec,menu)
+  local menu_name = menu .."_menus"
+  local str = uci:get("users.@user["..sec.."]."..menu_name)
+ return str
 end
 
---## GET THE STATUS OF THE MENU ##--
-local function get_menus(user,menu,section)
-  local menu_name = menu .. "_menus"
-  local buf = {}
-  --print(string.format("uci get users.@user[%s].%s\n", section,menu_name))
-  local file = io.popen(string.format("uci get users.@user[%s].%s", section,menu_name))
-  local str = file:read("*l")
-  file:close()
-  if str and str ~= "disabled" then
-    str = str .. " " ..get_subs(user,menu,section)
-    buf = load_buf(str)
-  end
- return buf
-end
-
+--## GET A TABLE LOADED WITH USERS AVAILABLE MENU ITEMS ##--
 function hide_menus(user,menu)
-  if user == "nobody" then return false end
-  if user == "root" then return true end
-  local menus = {}
-  local section = get_section(user)
-  local menus = get_menus(user,menu,section)
-  return menus
+  local buf = {}
+  local str
+  local menu_name = menu .."_menus"
+  if user == "nobody" then return buf end
+  local sec = get_section(user)
+  local str_menus = get_menu_status(user,sec,menu)
+  local str_subs = get_menu_subs(user,sec,menu)
+  if str_menus then str = str_menus end
+  if str_subs then str = str .. " "..str_subs end
+  if str ~= nil then
+    buf = load_buf(str)
+   return buf
+  else
+    return buf
+  end
 end
 
 --## function to set default password for new users ##--
---## duplicate of luci set password only a default password is set(openwrt)
 function setpasswd(username,password)
-  if not password then password = "openwrt" end
-  password = password:gsub("'", [['"'"']])
-
-  if username then
-    username = username:gsub("'", [['"'"']])
-  end
-  return os.execute(
-		"(echo '" .. password .. "'; sleep 1; echo '" .. password .. "') | " ..
-		"passwd '" .. username .. "' >/dev/null 2>&1"
-	)
+  luci.sys.user.setpasswd(username, "openwrt")
 end
 
 --####################################### Ulitlity functions ###############################################--
 
 --## function to check if user exists ##--
-function checkit(val, file)
- if not file then file = io.open(passwd, "r")
-  for line in file:lines() do
-   if line:find(val) then file:close() return false end
-  end
- end
-  return true
-end
-
---## function to check if file exists ##--
---## can be replaced with nixio file access ##-- 
-local function exists(name)
-    if type(name)~="string" then return false end
-    return os.rename(name,name) and true or false
+function user_exist(username)
+ if nixio.getsp(username) ~= nil then return true else return false end
 end
 
 --## function to check if path is a file ##--
-local function isFile(name)
-  if type(name)~="string" then return false end
-  if not exists(name) then return false end
-  local f = io.open(name)
-  if f then
-    f:close()
-   return true
-  end
- return false
+local function isFile(path)
+  if nixio.fs.stat(path, "type") == "reg" then return true else return false end
 end
 
 --## function to check if path is a directory ##--
-local function isDir(name)
-    return (exists(name) and not isFile(name))
+local function isDir(path)
+  if nixio.fs.access(path) then return true else return false end
 end
 
 --## function to get next available uid ##--
-function get_uid(group)
-  local file = assert(io.open(passwd, "r"))
-  local t = {}
-  local i = 1
-  local pat_uid
-
-  if group == "admin" then
-    pat_uid = ":1%d%d%d:1%d%d%d:"
-  elseif group == "user" then
-    pat_uid = ":2%d%d%d:2%d%d%d:"
-  else
-    if(debug > 0) then print("Error { User Group Doesn't Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error { User Group Doesn't Exists !! }")
+local function get_uid()
+local uid = 1000
+  while nixio.getpw(uid) do
+    uid = uid + 1
   end
-
-  for line in file:lines() do
-    if line:match(pat_uid) then
-      line = line:match(pat_uid)
-      uid = line:sub(2,5)
-      t[i] = uid
-      i = i + 1
-    end
-  end
-  file:close()
-
-  if #t < 1 then
-   if group == "admin" then t[1]=1000 else t[1]=2000 end
-  end
-  table.sort(t)
-  uid = t[#t] + 1 or 0
  return uid
 end
 
@@ -405,7 +329,7 @@ function add_passwd(name,uid,shell,homdir)
   local nuser = "\n"..name..":x:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
   local nuser2 = "\n"..name..":*:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
 
-  if checkit(name, file) then
+  if not user_exist(name) then
     file:write(nuser)
     file:close()
     file = assert(io.open(passwd2, "a"))
@@ -413,7 +337,7 @@ function add_passwd(name,uid,shell,homdir)
     file:close()
   else
     if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error { User Already Exist !! }")
+    fs.writefile("/tmp/multi.stderr", "Error add_passwd() { User Already Exist !! }")
     return 1
   end
 end
@@ -423,7 +347,7 @@ function add_shadow(name)
   local file = assert(io.open(shadow, "a"))
   local shad = "\n"..name..":*:11647:0:99999:7:::"
 
-  if checkit(name, file) then
+  if user_exist(name) then
     file:write(shad)
     file:close()
     file = assert(io.open(shadow2, "a"))
@@ -431,49 +355,48 @@ function add_shadow(name)
     file:close()
   else
     if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error { User Already Exists !! }")
+    fs.writefile("/tmp/multi.stderr", "Error add_shadow() { User Already Exists !! }")
     return 1
   end
 end
 
 --## function to add user to group ##--
-function add_group(name,uid)
-  local grp = "\n"..name..":x:"..uid..":"..name
+function add_group(group,uid)
+  local grp = "\n"..group..":x:"..uid..":"
   local file = assert(io.open(groupy, "a"))
 
-  if checkit(name, file) then
+  if user_exist(name) then
     file:write(grp)
     file:close()
   else
     if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error { User Already Exists !! }")
+    fs.writefile("/tmp/multi.stderr", "Error add_group() { User Already Exists !! }")
     return 1
   end
 end
 
 --## make the users home directory and set permissions to (755) ##--
-function make_home_dirs(homedir)
+function make_home_dirs(homedir,name,group)
   local home = "/home"
-
   if not isDir(home) then
     fs.mkdir(home, 755)
   end
   if not isDir(homedir) then
     fs.mkdir(homedir, 755)
   end
-  local cmd = "find "..homedir.." -print | xargs chown "..name..":"..name
+  local cmd = "find "..homedir.." -print | xargs chown "..name..":"..group
   os.execute(cmd)
 end
 
 --## function to check if user is valid ##--
 function check_user(name, group, shell)
-  if not checkit(name) then
+  if user_exist(name) then
     if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error { User Already Exists !! }")
+    fs.writefile("/tmp/multi.stderr", "Error check_user() { User Already Exists !! }")
     return 1
   elseif not name and pass and uid and shell then
     if(debug > 0) then print("Error { Not Enough Parameters !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error { Not Enough Parameters !! }")
+    fs.writefile("/tmp/multi.stderr", "Error check_user2(){ Not Enough Parameters !! }")
     return 1
   else
     add_user(name, group, shell)
@@ -482,12 +405,12 @@ end
 
 --## function to add user to the system  ##--
 function add_user(name, group, shell)
-  local uid = get_uid(group)
-  homedir = create_homedir(name)
+  local uid = get_uid()
+  homedir = create_homedir(name,group)
   add_passwd(name,uid,shell,homedir)
   add_shadow(name)
-  add_group(name,uid)
-  make_home_dirs(homedir)
+  add_group(group,uid)
+  make_home_dirs(homedir,name,group)
 end
 
 
@@ -552,6 +475,6 @@ function delete_user(user)
   write_file(shadow, buf.shadow)
   write_file(shadow2, buf.shadow)
   write_file(groupy, buf.group)
-  luci.sys.call("rm /home/"..user.."/*")
+  luci.sys.call("rm -r -f /home/"..user.."/")
   fs.rmdir("/home/"..user)
 end
