@@ -6,7 +6,7 @@ m = Map("users", translate("User Configuration"), translate("Add / Remove or Edi
 
 local fs = require "nixio.fs"
 local groups_path = "/etc/group"
-local groups = {"admin", "user"}
+local groups = {"users"}
 local usw = require "luci.users"
 
 local s, o
