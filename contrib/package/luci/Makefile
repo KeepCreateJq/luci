@@ -258,9 +258,11 @@ $(eval $(call application,firewall,Firewall and Portforwarding application,\
 
 $(eval $(call application,qos,Quality of Service configuration module,\
 	+PACKAGE_luci-app-qos:qos-scripts))
+	
+$(eval $(call application,multi-user,LuCI Multi User Support,\
+	+PACKAGE_luci-app-multi-user:multi-user))
 
 $(eval $(call application,commands,LuCI Shell Command Module))
-
 
 ### Themes ###
 define theme
