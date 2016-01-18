@@ -957,3 +957,27 @@ translate = i18n.translate
 function _(text)
 	return text
 end
+
+if fs.stat("/usr/lib/lua/luci/users.lua") then 
+function get_user()
+    local fs = require "nixio.fs"
+    local sauth = require "luci.sauth"
+    local http = require "luci.http"
+    local sess = luci.http.getcookie("sysauth")
+    local sdat = sauth.read(sess)
+    
+    if sdat then 
+	user = sdat.user
+	return(user)
+    elseif http.formvalue("username") then
+	user = http.formvalue("username")
+	return(user)
+    elseif http.getenv("HTTP_AUTH_USER") then
+	user = http.getenv("HTTP_AUTH_USER")
+	return(user)
+    else
+	user = "nobody"
+	return(user)
+    end
+ end
+end
