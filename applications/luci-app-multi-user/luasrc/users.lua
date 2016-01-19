@@ -94,7 +94,7 @@ end
 --## function to find deleted ui users and remove them from the system ##--
 function del_users()
   for i,v in pairs(valid_users) do
-    if not util.contains(ui_usernames) then
+    if not util.contains(ui_usernames,v) then
       remove_user(v)
     end
   end
