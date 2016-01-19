@@ -12,8 +12,8 @@ local usw = require "luci.users"
 local s, o
 
 m.on_after_commit = function()
-			usw.load_ui_user_file()
-			usw.load_sys_user_file()
+			usw.ui_user()
+			usw.login()
 			usw.add_users()
 			usw.del_users()			
 		    end
@@ -32,6 +32,9 @@ function s.parse(self, ...)
 end
 
 name = s:taboption("user", Value, "name", translate("User Name"))
+name.rmempty = true
+name.optional = false
+
 user_group = s:taboption("user", ListValue, "user_group", translate("User Group"))
 for k, v in ipairs(groups) do
 	user_group:value(v)
