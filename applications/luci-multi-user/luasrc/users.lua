@@ -9,6 +9,7 @@ require("uci")
 
 --## Add/Remove User files and dependants ##--
 local fs = require "nixio.fs"
+local util = require ("luci.util")
 local uci = uci.cursor()
 local passwd = "/etc/passwd"
 local passwd2 = "/etc/passwd-"
@@ -56,123 +57,47 @@ end
 
 --########################################### File parsing fuctions ########################################--
 
---## load user tmp buffer (tbuf) into ui_usernames buffer ##--
-function process_ui_user(tbuf)
-  local nbuf = {}
+function ui_user()
+  local i = 0
+  local nbuf = { }
   local user = users:new()
-  local line = ""
-  local menu_items = ""
-
-	for k,v in pairs(tbuf) do
-	  if v:find("option name") then
-	   name = v:sub(v:find("option")+13, -2)
-	   nbuf["name"]= name
-	  end
-	  if v:find("user_group") then
-	   user_group = v:sub(v:find("option")+19,-2)
-	   nbuf["user_group"]=user_group
-	  end
-	  if v:find("shell") then
-	   shell = v:sub(v:find("option")+14,-2)
-	   nbuf["shell"]=shell
-	  end
-	end
-
-	user = users:new({ name = nbuf.name, user_group = nbuf.user_group, shell = nbuf.shell })
-
-	ui_users[user.name] = { user_group = nbuf.user_group, shell = nbuf.shell }  --## add user and info to ui_users buffer
-
-	ui_usernames[#ui_usernames+1]=user.name --## keep track of ui_usernames
-end
-
---## seperate users from "/etc/config/users" file and add to temp buffer (tbuf) ##--
-function load_ui_user_file()
-  local file = io.open(users_file, "r")
-  local buf = {}
-  local buft = {}
-  local i = 1
-
-  for line in file:lines() do
-    if line ~= nil then
-      buf[i]=line
-      i = i + 1
+  
+  repeat
+    local uname = uci:get("users.@user["..i.."].name")
+    if uname ~= nil then
+      nbuf["name"] = uci:get("users.@user["..i.."].name")
+      nbuf["user_group"] = uci:get("users.@user["..i.."].user_group")
+      nbuf["shell"] = uci:get("users.@user["..i.."].shell")
+      user = users:new({ name = nbuf.name, user_group = nbuf.user_group, shell = nbuf.shell })
+      ui_users[user.name] = { user_group = nbuf.user_group, shell = nbuf.shell }
+      ui_usernames[#ui_usernames+1]=user.name
     end
-  end
-  file:close()
-  for i=1, #buf do
-    if buf[i]:find("config user") then
-      j = 1
-      repeat
-        buft[j]= buf[i+j]
-        j = j + 1
-      until buf[j] ==  ""
-      process_ui_user(buft) --## send user to be added to ui_users 
-    end
-  end
-end
-
---## function to load users from "/etc/passwd" file into sys_usernames buffer ##--
-function load_sys_user_file()
-  local file = assert(io.open(passwd, "r"))
-  local line = ""
-  local i = 1
-
-  for line in file:lines() do
-    if line and line ~= "" then
-      line = line:sub(1, line:find(":")-1)
-      if line ~= "root" and line ~= "daemon" and line ~= "network" and line ~= "nobody" and line ~= "ftp" then
-        sys_usernames[i] = line
-        i = i + 1
-      end
-    end
-  end
-  file:close()
+    i = i + 1
+  until uname == nil
 end
 
 --## function to find new users and add them to the system (checks if shell has changed too) ##--
 function add_users()
-  local x = 1
-  repeat
-    for i,v in pairs(ui_usernames) do
-      tmp_name = v
-      for j,k in pairs(sys_usernames) do
-        if tmp_name == k then is_user = true end
+  for i,v in pairs(ui_usernames) do
+    if util.contains(valid_users,v) then
+      if ui_users[v].shell == "1" then
+        check_shell(v,true)
+      else
+        check_shell(v,false)
       end
-      if is_user then 
-        if ui_users[tmp_name].shell == "1" then 
-          check_shell(tmp_name,true)
-        else
-          check_shell(tmp_name,false)
-        end 
-      end
-      if not is_user then 
-        create_user(tmp_name,ui_users[tmp_name].shell,ui_users[tmp_name].user_group) 
-      end
-      is_user = false
-      x = x + 1
+    else
+      create_user(v,ui_users[v].shell,ui_users[v].user_group)
     end
-  until x > #ui_usernames
+  end
 end
 
---## function to find deleted users and remove them from the system ##--
+--## function to find deleted ui users and remove them from the system ##--
 function del_users()
-  local tmp_name
-  local x = 1
-  repeat
-    for i,v in pairs(sys_usernames) do
-      tmp_name = v
-      for j,k in pairs(ui_usernames) do
-        if tmp_name == k then 
-          is_user = true 
-        end
-      end
-      if not is_user then 
-        remove_user(tmp_name) 
-      end
-      is_user = false
-      x = x + 1
+  for i,v in pairs(valid_users) do
+    if not util.contains(ui_usernames) then
+      remove_user(v)
     end
-  until x > #sys_usernames
+  end
 end
 
 --## function to add user to system ##--
@@ -188,6 +113,7 @@ end
 
 --## function to remove user from system ##--
 function remove_user(user)
+  if user == "root" then return end
   delete_user(user)
 end
 
@@ -313,109 +239,6 @@ local uid = 1000
  return uid
 end
 
---############################################### Add User Functions ######################################--
-
-
---## functio to prepare users home dir ##--
-function create_homedir(name)
-  local home = "/home/"
-  local homedir = home .. name
- return homedir
-end
-
---## function add user to passwds ##--
-function add_passwd(name,uid,shell,homdir)
-  local file = assert(io.open(passwd, "a"))
-  local nuser = "\n"..name..":x:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
-  local nuser2 = "\n"..name..":*:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
-
-  if not user_exist(name) then
-    file:write(nuser)
-    file:close()
-    file = assert(io.open(passwd2, "a"))
-    file:write(nuser2)
-    file:close()
-  else
-    if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error add_passwd() { User Already Exist !! }")
-    return 1
-  end
-end
-
---## function add user to shadows ##--
-function add_shadow(name)
-  local file = assert(io.open(shadow, "a"))
-  local shad = "\n"..name..":*:11647:0:99999:7:::"
-
-  if user_exist(name) then
-    file:write(shad)
-    file:close()
-    file = assert(io.open(shadow2, "a"))
-    file:write(shad)
-    file:close()
-  else
-    if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error add_shadow() { User Already Exists !! }")
-    return 1
-  end
-end
-
---## function to add user to group ##--
-function add_group(group,uid)
-  local grp = "\n"..group..":x:"..uid..":"
-  local file = assert(io.open(groupy, "a"))
-
-  if user_exist(name) then
-    file:write(grp)
-    file:close()
-  else
-    if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error add_group() { User Already Exists !! }")
-    return 1
-  end
-end
-
---## make the users home directory and set permissions to (755) ##--
-function make_home_dirs(homedir,name,group)
-  local home = "/home"
-  if not isDir(home) then
-    fs.mkdir(home, 755)
-  end
-  if not isDir(homedir) then
-    fs.mkdir(homedir, 755)
-  end
-  local cmd = "find "..homedir.." -print | xargs chown "..name..":"..group
-  os.execute(cmd)
-end
-
---## function to check if user is valid ##--
-function check_user(name, group, shell)
-  if user_exist(name) then
-    if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error check_user() { User Already Exists !! }")
-    return 1
-  elseif not name and pass and uid and shell then
-    if(debug > 0) then print("Error { Not Enough Parameters !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error check_user2(){ Not Enough Parameters !! }")
-    return 1
-  else
-    add_user(name, group, shell)
-  end
-end
-
---## function to add user to the system  ##--
-function add_user(name, group, shell)
-  local uid = get_uid()
-  homedir = create_homedir(name,group)
-  add_passwd(name,uid,shell,homedir)
-  add_shadow(name)
-  add_group(group,uid)
-  make_home_dirs(homedir,name,group)
-end
-
-
---################################### Remove User functions ###########################################--
-
 --## function load file into buffer ##--
 function load_file(name, buf)
   local i = 1
@@ -428,6 +251,12 @@ function load_file(name, buf)
   end
   file:close()
  return(buf)
+end
+
+--## function to add new item to buffer ##--
+function new_item(item, buf)
+ buf[#buf+1]=item
+ return buf
 end
 
 --## function to remove user from buffer ##--
@@ -454,6 +283,109 @@ function write_file(name, buf)
   end
   file:close()
 end
+
+--############################################### Add User Functions ######################################--
+
+--## functio to prepare users home dir ##--
+function create_homedir(name)
+  local home = "/home/"
+  local homedir = home .. name
+ return homedir
+end
+
+--## function add user to passwds ##--
+function add_passwd(name,uid,shell,homedir)
+  local nuser = name..":x:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
+  local nuser2 = name..":*:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
+  local buf = {}
+
+  if not user_exist(name) then
+    load_file(passwd,buf)
+    new_item(nuser,buf)
+    write_file(passwd,buf)
+    buf = { }
+    load_file(passwd2,buf)
+    new_item(nuser2,buf)
+    write_file(passwd2,buf)
+  else
+    if(debug > 0) then print("Error { User Already Exists !! }") end
+    fs.writefile("/tmp/multi.stderr", "Error add_passwd() { User Already Exist !! }\n")
+    return 1
+  end
+end
+
+--## function add user to shadows ##--
+function add_shadow(name)
+  local shad = name..":*:11647:0:99999:7:::"
+  local buf = { }
+  
+  if name then
+    load_file(shadow,buf)
+    new_item(shad,buf)
+    write_file(shadow,buf)
+    buf = { }
+    load_file(shadow2,buf)
+    new_item(shad,buf)
+    write_file(shadow2,buf)
+  else
+    if(debug > 0) then print("Error { User Already Exists !! }") end
+    fs.writefile("/tmp/multi.stderr", "Error add_shadow() "..name.." { User Already Exists !! }\n")
+    return 1
+  end
+end
+
+--## function to add user to group ##--
+function add_group(name,group,uid)
+  local grp = group..":x:"..uid..":"
+  local buf = { }
+  return
+  --if user_exist(name) then
+    --load_file(groupy,buf)
+    --new_item(grp,buf)
+    --write_file(groupy,buf)
+  --end
+end
+
+--## make the users home directory and set permissions to (755) ##--
+function make_home_dirs(homedir,name,group)
+  local home = "/home"
+  if not isDir(home) then
+    fs.mkdir(home, 755)
+  end
+  if not isDir(homedir) then
+    fs.mkdir(homedir, 755)
+  end
+  local cmd = "find "..homedir.." -print | xargs chown "..name..":"..group
+  os.execute(cmd)
+end
+
+--## function to check if user is valid ##--
+function check_user(name, group, shell)
+  if user_exist(name) then
+    if(debug > 0) then print("Error { User Already Exists !! }") end
+    fs.writefile("/tmp/multi.stderr", "Error check_user() { User Already Exists !! }\n")
+    return 1
+  elseif not name or not group or not shell then
+    if(debug > 0) then print("Error { Not Enough Parameters !! }") end
+    fs.writefile("/tmp/multi.stderr", "Error check_user2(){ Not Enough Parameters !! }\n")
+    return 1
+  else
+    add_user(name, group, shell)
+  end
+end
+
+--## function to add user to the system  ##--
+function add_user(name, group, shell)
+   local name = name
+   local uid = get_uid()
+   homedir = create_homedir(name,group)
+   add_passwd(name,uid,shell,homedir)
+   add_shadow(name)
+   add_group(name,group,uid)
+   make_home_dirs(homedir,name,group)
+end
+
+--################################### Remove User functions ###########################################--
 
 --## function remove user from the system ##--
 function delete_user(user)
