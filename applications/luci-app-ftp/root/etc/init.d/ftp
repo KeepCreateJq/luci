@@ -1,0 +1,20 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006 OpenWrt.org
+
+START=100
+
+boot() {
+	echo "" > /tmp/ftp.log >/dev/null &
+	ftp-server >/dev/null &
+}
+
+start() {
+	killall -9 ftp-server >/dev/null
+	echo "" > /tmp/ftp.log >/dev/null &
+	ftp-server >/dev/null &
+}
+
+stop() {
+	killall -9 ftp-server >/dev/null
+	echo "Ftp Server is Not Running" > /tmp/ftp.log
+}
