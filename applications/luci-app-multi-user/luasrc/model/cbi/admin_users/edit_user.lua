@@ -4,7 +4,7 @@
 
 local utl = require "luci.util"
 
-m = Map("users", arg[1], translate("User Configuration Options"))
+m = Map("users", arg[1]:upper(), translate("User Configuration Options"))
 
 local fs = require "nixio.fs"
 local groups = {"users", "admin", "other"}
