@@ -16,36 +16,19 @@ local passwd2 = "/etc/passwd-"
 local shadow = "/etc/shadow"
 local shadow2 = "/etc/shadow-"
 local groupy = "/etc/group"
-local users_file = "/etc/config/users"
+local config = "/etc/config/users"
 local homedir
-
---## global User buffers ##--
-local ui_users = {}
-local ui_usernames = {}
-local sys_usernames = {}
-local valid_users = {}
 
 --## global menu buffers ##--
 local status = {}
 local system = {}
 local network = {}
 
---## debugging ##--
-local debug = 0
-local logfile = "/tmp/users.log"
+--####################################### luci ui functions ###############################################--
 
---## users model boiler plate ##--
-users = {}
-users.prototype = { name = "new user", user_group = "default", shell = "none", menu_items = "none" }
-users.metatable = { __index = users.prototype }
-
-function users:new(user)
-	setmetatable(users, users.metatable)
-	return user
-end
-
---## login function to provide valid usernames, used by dispatcher,index and serviceclt ##--
+--## login function to provide valid usernames, used by ndex and serviceclt ##--
 function login()
+local valid_users = {}
 local i, pwent
 for i, pwent in ipairs(nixio.getpw()) do
   if pwent.uid == 0 or (pwent.uid >= 1000 and pwent.uid < 65534) then
@@ -55,118 +38,75 @@ end
   return valid_users
 end
 
---########################################### File parsing fuctions ########################################--
-
-function ui_user()
-  local i = 0
-  local nbuf = { }
-  local user = users:new()
-  
-  repeat
-    local uname = uci:get("users.@user["..i.."].name")
-    if uname ~= nil then
-      nbuf["name"] = uci:get("users.@user["..i.."].name")
-      nbuf["user_group"] = uci:get("users.@user["..i.."].user_group")
-      nbuf["shell"] = uci:get("users.@user["..i.."].shell")
-      user = users:new({ name = nbuf.name, user_group = nbuf.user_group, shell = nbuf.shell })
-      ui_users[user.name] = { user_group = nbuf.user_group, shell = nbuf.shell }
-      ui_usernames[#ui_usernames+1]=user.name
-    end
-    i = i + 1
-  until uname == nil
+--## fuction to add a new user ##--
+function new_user()
+  local user = uci:get("users", "new", "name")
+  uci:rename("users.new="..user)
+  uci:commit("users")
+  uci:add("users", "user")
+  uci:rename("users.@user[-1]=new")
+  uci:commit("users")
+  local shell = uci:get("users", user, "shell")
+  if shell == "Enabled" then shell = "ash" else shell = "false" end
+  local group = uci:get("users", user, "group")
+  add_user(user,"users",shell)
+ return
 end
 
---## function to find new users and add them to the system (checks if shell has changed too) ##--
-function add_users()
-  for i,v in pairs(ui_usernames) do
-    if util.contains(valid_users,v) then
-      if ui_users[v].shell == "1" then
-        check_shell(v,true)
-      else
-        check_shell(v,false)
+--## function to edit an existing user ##--
+function edit_user(user)
+  local shell = uci:get("users", user, "shell")
+  if shell == "Enabled" then shell = "ash" else shell = "false" end
+  local group = uci:get("users", user, "group")
+  set_shell(user,shell)
+  --set_group(user,group)
+ return
+end
+
+--## set the users shell ##--
+function set_shell(user,shell)
+  local buf = {}
+  load_file(passwd,buf)
+  local upat = "home/%w+:"
+
+  for i,v in pairs(buf) do
+    for name in v:gmatch(upat) do
+      name = name:sub(name:find("/")+1,name:find(":")-1)
+      if name == user then
+        name = v:gsub(v:sub(v:find("bin")+4,-1), shell)
+        buf[i]= name
       end
-    else
-      create_user(v,ui_users[v].shell,ui_users[v].user_group)
     end
   end
+  write_file(passwd, buf)
+ return
+end
+
+--## Function to get the ui usernames ##--
+function ui_users()
+  local ui_usernames = {}
+  uci:foreach("users", "user", function(s) if s.name ~= nil then ui_usernames[#ui_usernames+1]=s.name end end )
+  return ui_usernames
 end
 
 --## function to find deleted ui users and remove them from the system ##--
-function del_users()
-  for i,v in pairs(valid_users) do
-    if not util.contains(ui_usernames,v) then
-      remove_user(v)
-    end
-  end
-end
-
---## function to add user to system ##--
-function create_user(user,shell,group)
-  if shell == '1' then 
-    shell = "/bin/ash" 
-  else 
-    shell = "/bin/false" 
-  end
-  check_user(user, group, shell)
-  setpasswd(user)
-end
-
---## function to remove user from system ##--
-function remove_user(user)
-  if user == "root" then return end
-  delete_user(user)
-end
-
---## function to check if user gets ssh access (shell or not) ##--
-function check_shell(user,has_shell)
-  local file = assert(io.open(passwd, "r"))
-  local line = ""
-  local shell
-  local i = 1
-  local buf = {}
-
-  for line in file:lines() do
-    if line and line ~= "" then
-      buf[i]=line
-      if line:find(user) then
-        shell = line:sub(line:find(":/bin/")+1,-1)
-      end
-      i = i + 1
-    end
-  end
-  file:close()
-  if has_shell and shell ~= "/bin/ash" then
-    for i = 1, #buf do
-      if buf[i]:find(user) then
-        buf[i]=buf[i]:gsub("/bin/false", "/bin/ash")
-      end
-    end
-  elseif not has_shell and shell ~= "/bin/false" then
-    for i = 1, #buf do
-      if buf[i]:find(user) then
-        buf[i]=buf[i]:gsub("/bin/ash", "/bin/false")
+function del_user(username)
+  if username ~= nil and username ~= "root" then
+      delete_user(username)
+  else
+    local ui_usernames = ui_users()
+    local valid_users = login()
+    for i,v in pairs(valid_users) do
+      if not util.contains(ui_usernames,v) then
+        if v ~= "root" then
+         delete_user(v)
+        end
       end
     end
   end
-  file = assert(io.open(passwd, "w+"))
-  for k,v in pairs(buf) do
-    file:write(v.."\n")
-  end
-  file:close()
 end
 
---## DETERMINE THE SECTION NUMBER OF USER ##--
-local function get_section(username)
-  local i = 0
-  repeat
-    name = uci:get("users.@user["..i.."].name")
-    i = i + 1
-  until name == username
-  section = i - 1 
- return section
-end
-
---## SPLIT STR INDIVIDUAL TABLE ELEMENTS ##--
+--## SPLIT STR into INDIVIDUAL TABLE ELEMENTS ##--
 local function load_buf(str)
   local buf = {}
   for word in string.gmatch(str, "[^%s]+") do
@@ -175,37 +115,35 @@ local function load_buf(str)
  return buf
 end
 
---## GET MENU SUB ##--
-local function get_menu_subs(user,sec,menu)
+--## GET SUB MENUS ##--
+local function get_menu_subs(user,menu)
   local menu_name = menu .."_subs"
-  local str = uci:get("users.@user["..sec.."]."..menu_name)
+  local str = uci:get("users", user, menu_name)
  return str
 end
 
---## GET MENU STATUS ##--
-function get_menu_status(user,sec,menu)
+--## GET STATUS OF A MENU ##--
+function get_menu_status(user,menu)
   local menu_name = menu .."_menus"
-  local str = uci:get("users.@user["..sec.."]."..menu_name)
+  local str = uci:get("users", user, menu_name)
  return str
 end
 
---## GET A TABLE LOADED WITH USERS AVAILABLE MENU ITEMS ##--
+--## GET A TABLE LOADED WITH the USERS AVAILABLE MENU ITEMS ##--
 function hide_menus(user,menu)
   local buf = {}
   local str
-  local menu_name = menu .."_menus"
+  local menu_name = string.format("%s%s", menu,"_menus")
   if user == "nobody" then return buf end
-  local sec = get_section(user)
-  local str_menus = get_menu_status(user,sec,menu)
-  local str_subs = get_menu_subs(user,sec,menu)
-  if str_menus then str = str_menus end
-  if str_subs then str = str .. " "..str_subs end
-  if str ~= nil then
-    buf = load_buf(str)
-   return buf
-  else
-    return buf
+  local str_menus = get_menu_status(user,menu)
+  local str_subs = get_menu_subs(user,menu)
+  if str_menus and str_subs then 
+    str = string.format("%s %s", str_menus, str_subs)
+  elseif str_menus then 
+    str = string.format("%s", str_menus)
   end
+  if str ~= nil then buf = load_buf(str) end
+ return buf
 end
 
 --## function to set default password for new users ##--
@@ -214,6 +152,39 @@ function setpasswd(username,password)
 end
 
 --####################################### Ulitlity functions ###############################################--
+
+function get_color(user)
+  local tpl = require "luci.template.parser"
+  local grp = uci:get("users", user, "group")
+  if user and grp == "users" then
+    return "#90f090"
+  elseif user and grp == "admin" then
+    return "#f09090"
+  elseif user then
+    math.randomseed(tpl.hash(user))
+
+    local r   = math.random(128)
+    local g   = math.random(128)
+    local min = 0
+    local max = 128
+
+    if ( r + g ) < 128 then
+      min = 128 - r - g
+    else
+      max = 255 - r - g
+    end
+
+    local b = min + math.floor( math.random() * ( max - min ) )
+    return "#%02x%02x%02x" % { 0xFF - r, 0xFF - g, 0xFF - b }
+  else
+    return "#eeeeee"
+  end
+end
+
+function clean_config()
+  local file = assert(io.open(users_file, "w+"))
+  file:close()
+end
 
 --## function to check if user exists ##--
 function user_exist(username)
@@ -246,7 +217,6 @@ function load_file(name, buf)
 
   for line in file:lines() do
     buf[i] = line
-    if debug > 0 then print(buf[i]) end
     i = i + 1
   end
   file:close()
@@ -271,10 +241,9 @@ end
 
 --## function to write buffer back to file ##--
 function write_file(name, buf)
-  local file = io.open(name, "w")
+  local file = io.open(name, "w+")
 
   for i,v in pairs(buf) do
-    if debug > 0 then print(v) end
     if(i < #buf) then
       file:write(v.."\n")
     else
@@ -295,8 +264,8 @@ end
 
 --## function add user to passwds ##--
 function add_passwd(name,uid,shell,homedir)
-  local nuser = name..":x:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
-  local nuser2 = name..":*:"..uid..":"..uid..":"..name..":"..homedir..":"..shell
+  local nuser = name..":x:"..uid..":"..uid..":"..name..":"..homedir..":".."/bin/"..shell
+  local nuser2 = name..":*:"..uid..":"..uid..":"..name..":"..homedir..":".."/bin/"..shell
   local buf = {}
 
   if not user_exist(name) then
@@ -308,9 +277,7 @@ function add_passwd(name,uid,shell,homedir)
     new_item(nuser2,buf)
     write_file(passwd2,buf)
   else
-    if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error add_passwd() { User Already Exist !! }\n")
-    return 1
+    return
   end
 end
 
@@ -328,9 +295,7 @@ function add_shadow(name)
     new_item(shad,buf)
     write_file(shadow2,buf)
   else
-    if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error add_shadow() "..name.." { User Already Exists !! }\n")
-    return 1
+    return 
   end
 end
 
@@ -359,30 +324,22 @@ function make_home_dirs(homedir,name,group)
   os.execute(cmd)
 end
 
---## function to check if user is valid ##--
-function check_user(name, group, shell)
-  if user_exist(name) then
-    if(debug > 0) then print("Error { User Already Exists !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error check_user() { User Already Exists !! }\n")
-    return 1
-  elseif not name or not group or not shell then
-    if(debug > 0) then print("Error { Not Enough Parameters !! }") end
-    fs.writefile("/tmp/multi.stderr", "Error check_user2(){ Not Enough Parameters !! }\n")
-    return 1
-  else
-    add_user(name, group, shell)
-  end
-end
-
 --## function to add user to the system  ##--
 function add_user(name, group, shell)
-   local name = name
-   local uid = get_uid()
-   homedir = create_homedir(name,group)
-   add_passwd(name,uid,shell,homedir)
-   add_shadow(name)
-   add_group(name,group,uid)
-   make_home_dirs(homedir,name,group)
+  local name = name
+  local uid = get_uid()
+
+  if user_exist(name) then 
+    return
+  elseif name and group and uid and shell then
+    homedir = create_homedir(name,group)
+    add_passwd(name,uid,shell,homedir)
+    add_shadow(name)
+    add_group(name,group,uid)
+    make_home_dirs(homedir,name,group)
+    setpasswd(name)
+  end
+ return
 end
 
 --################################### Remove User functions ###########################################--
