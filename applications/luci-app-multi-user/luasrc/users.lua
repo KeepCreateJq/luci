@@ -118,14 +118,14 @@ end
 --## GET SUB MENUS ##--
 local function get_menu_subs(user,menu)
   local menu_name = menu .."_subs"
-  local str = uci:get("users", user, "menu_name")
+  local str = uci:get("users", user, menu_name)
  return str
 end
 
 --## GET STATUS OF A MENU ##--
 function get_menu_status(user,menu)
   local menu_name = menu .."_menus"
-  local str = uci:get("users", "user", "menu_name")
+  local str = uci:get("users", user, menu_name)
  return str
 end
 
