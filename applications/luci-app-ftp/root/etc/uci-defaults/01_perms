@@ -1,0 +1,5 @@
+#!/bin/sh
+chmod +x /usr/bin/ftp-server
+chmod +x /etc/init.d/ftp
+/etc/init.d/ftp enable
+return 0
