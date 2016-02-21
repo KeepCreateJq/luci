@@ -1,0 +1,134 @@
+#!/usr/bin/lua
+
+--[[ wifimanger main module ]]--
+
+-- Version 1.00
+-- By Hostle 2/29/2016
+
+--## DEPENDENTS ##--
+require ("uci")
+require ("iwinfo")
+local nix = require ("nixio")
+local net = require ("wifimanager.functions")
+local util = require ("luci.util")
+local sys = require ("luci.sys")
+local uci = uci.cursor()
+
+--## VERSION INFO ##--
+local version = "1.00"
+
+--## LOCAL FLAGS ##--
+local verbose = 0
+local boot_flag = 0
+local ap_flag = 0
+
+--## LOCAL VARS ##--
+local ping_addr = uci:get("wifimanager", "conn", "PingLocation")
+local boot_tries = tonumber(uci:get("wifimanager", "conn", "boot_tries"))
+local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
+local new_nets = tonumber(uci:get("wifimanager", "conn", "new_nets"))
+local log_lev = tonumber(uci:get("wifimanager", "conn", "log_lev"))
+local ap_mode = tonumber(uci:get("wifimanager", "ap", "ap_mode"))
+
+--## START TIMES ##--
+local conn_time = os.time()
+
+--## TIME LIMITS ##--
+local conn_int = tonumber(uci:get("wifimanager", "conn", "ConnCheckTimer"))
+
+--## OPTIONS MENU ##--
+local help_msg = "\n\t\t\t  WifiManager ( "..version.." )\n\n\t\t\t ###### OPTIONS ######\n\t\t\t #####################\n\t\t\t # -h Print Help     #\n\t\t\t # -v Verbose Mode   #\n\t\t\t # -d Debugging Mode #\n\t\t\t # -s Version Info   #\n\t\t\t #####################\n\n"
+
+--## logger ##-- 
+--[[ 1 = alert, 2 = crit, 3 = notice, 4 = warn, 5 = notice, 6 = info, 7 = debug, 8 = notice, 9 = alert ]]--
+local function logger(lev,msg)
+  local log = sys.exec("logger -p daemon."..lev.." "..msg.." -t WifiManager")
+ return
+end
+  
+--## MAIN THREAD ##--
+main = function()
+  while true do
+    
+    --## INTAIAL BOOT, WAIT FOR NETWORK TO COME UP##--
+    if (boot_flag < 1) then
+      logger(1,"STARTING WIFI MANAGER")
+    if (log_lev > 0) then logger(6,"WAITING FOR NETWORK ") end
+      repeat
+        local up = net.net_status()
+      until up 
+        logger(6,"WWAN NETWORK IS UP")
+        logger(6,"CHECKING FOR INTERNET CONNECTION")
+      boot_flag = 1
+      if net.conn_test(5) then 
+        if (log_lev < 1) then logger(1,"INTERNET CONNECTION TEST PASSED") end
+        if (new_nets > 0 ) then net.add_network() end
+      else
+        logger(1,"INTERNET CONNECTION TEST FAILED")
+        logger(1,"SEARCHING FOR AVAILABLE NETWORKS")
+        net.find_network()
+      end
+    end
+
+    --## CONNECTION TEST TIMER ##--
+    local c = os.difftime(os.time(),conn_time)
+    if (verbose > 0) then 
+      print("THREAD STATE: { working }")
+      print(string.format("CHECK CONNECTION\t{ CURRENT COUNT:%d | INTERVAL: %d }",c,conn_int)) 
+    end
+    if (c >= conn_int) then 
+      if net.conn_test(3) then
+        if (ap_mode > 0) and (ap_flag < 1) then
+        logger(1,"ADDING AP") 
+          net.add_ap()
+          ap_flag = 1 
+        end
+        if (log_lev > 0) then 
+          logger(1,"INTERNET CONNECTION TEST PASSED") 
+        end
+      else
+        if (log_lev > 0) then
+          logger(1,"INTERNET CONNECTION TEST FAILED")
+          logger(1,"SEARCHING FOR AVAILABLE NETWORKS")
+        end
+        net.find_network()
+      end
+     conn_time = os.time()
+    end
+    coroutine.yield()
+  end
+end
+
+--## CMD LINE OPIONS ##--
+if #arg > 0 then
+  if arg[1] == "-h" then
+    print(help_msg)
+    return
+  elseif arg[1] == "-v" then
+    print("Verbose mode")
+    verbose = 1
+  elseif arg[1] == "-d" then
+    print("Debug mode")
+    debug = 1
+  elseif arg[1] == "-s" then
+    print(version)
+    return
+  else
+    print(help_msg)
+  end
+end
+
+--## START OF PROGRAM ##--
+main_thread=coroutine.create(main)
+coroutine.resume(main_thread)
+--## POST STATUS ON INITIAL STARTUP ##--
+while coroutine.status(main_thread)~="dead" do
+  if(verbose > 0 ) then
+    print("\nCHECKING TIMER THREADS ...",select(2,coroutine.resume(main_thread)))
+    print("THREAD STATE: { "..coroutine.status(main_thread).." }\n")
+    nix.nanosleep(1,0)
+  else
+    select(2,coroutine.resume(main_thread))
+	nix.nanosleep(1,0)
+  end
+end
