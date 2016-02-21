@@ -1,0 +1,6 @@
+#!/bin/sh
+chmod +x /usr/bin/wifimanager
+chmod +x /etc/init.d/wifimanager
+/etc/init.d/wifimanager enable
+/etc/init.d/wifimanager start
+return 0
