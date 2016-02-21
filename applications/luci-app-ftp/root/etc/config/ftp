@@ -1,0 +1,6 @@
+config ftp 'ftp'
+	option ipaddr '192.168.1.1'
+	option server_port '8383'
+	option console_set '1'
+	option log_level '1'
+	option enable_pasv 'false'
