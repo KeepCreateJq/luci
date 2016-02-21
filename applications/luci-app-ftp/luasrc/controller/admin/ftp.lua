@@ -44,12 +44,3 @@ function action_stop()
   ftp.stop_ftp()
  return
 end
-
-function main (...)
-  if arg[1] == "log" then
-    log()
-  end
- return
-end
-
-main ( ...)
