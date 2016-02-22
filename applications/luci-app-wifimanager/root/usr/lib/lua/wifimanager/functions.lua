@@ -185,10 +185,10 @@ end
 
 --## RELOAD NETWORK ##--
 function network_reload()
-  if (log_lev > 0) then logger(7,"RELOADING NETWROK") end
+  if (log_lev > 0) then logger(6,"RELOADING NETWROK") end
   sys.exec("/etc/init.d/network reload")
   nix.nanosleep(3,0)
-  if (log_lev > 0) then logger(7,"NETWROK RELAOADED SUCCESSFULLY") end
+  if (log_lev > 0) then logger(6,"NETWROK RELAOADED SUCCESSFULLY") end
  return
 end
 
@@ -237,7 +237,7 @@ local function config_sta()
 end
 
 local function wifi_sta()
-  uci:foreach("wireless", "wifi-face", function(s) if s.ssid ~= nil then wsta[#wsta+1]=s.ssid end end )
+  uci:foreach("wireless", "wifi-iface", function(s) if s.ssid ~= nil then wsta[#wsta+1]=s.ssid end end )
 end
 
 --## ADD THE NETWORK TO THE WIRELESS CONFIG ##--
@@ -274,6 +274,7 @@ local function prep_client(ssid)
     repeat
         local up = net_status()
     until up
+    nix.nanosleep(2,5)
     if conn_test(net_tries) then
       return true 
     end
@@ -314,14 +315,14 @@ function add_ap()
   wifi_sta()
   local ap_ssid = uci:get("wifimanager", "ap", "ap_ssid")
   local ap_enc = uci:get("wifimanager", "ap", "ap_encrypt")
+  local ap_key
   if ap_enc ~= "none" then
-    local ap_key = uci:get("wifimanager", "ap", "ap_key")
+    ap_key = uci:get("wifimanager", "ap", "ap_key")
   end
   local sec = net_sec()
   local dev = uci:get("wireless.@wifi-iface["..sec.."].device")
   if not util.contains(wsta, ap_ssid) then
     uci:add("wireless", "wifi-iface")
-    uci:commit("wireless")
     uci:set("wireless.@wifi-iface[-1].device="..dev)
     uci:set("wireless.@wifi-iface[-1].mode=ap")
     uci:set("wireless.@wifi-iface[-1].ssid="..ap_ssid)
