@@ -1,6 +1,6 @@
 --[[ NETWORK MANAGER MODULE ]]--
 
--- VERSION 1.00
+-- VERSION 1.01
 -- By HOSTLE 2/17/2016
 
 module("wifimanager.functions", package.seeall)
@@ -19,7 +19,7 @@ local buf = {}
 local ssta = {}
 local csta = {}
 local wsta = {}
-
+local essid
 
 --## LOCAL VARS ##--
 local ping_addr = uci:get("wifimanager", "conn", "PingLocation")
@@ -29,7 +29,10 @@ local new_nets = tonumber(uci:get("wifimanager", "conn", "new_nets"))
 local ap_mode = tonumber(uci:get("wifimanager", "ap", "ap_mode"))
 
 
---[[ LOGGING ]]--
+
+
+
+---------------------------------------[[ LOGGING ]]-------------------------------------
 
 --## LOG LEVEL ##--
 local log_lev = tonumber(uci:get("wifimanager", "conn", "log_lev"))
@@ -40,10 +43,13 @@ function logger(lev,msg)
   local log = sys.exec("logger -p daemon."..lev.." "..msg.." -t WifiManager")
  return
 end
---[[ END LOGGING ]]--
+---------------------------------------[[ END LOGGING ]]---------------------------------
 
 
---[[ UTILITIES ]]--
+
+
+
+---------------------------------------[[ UTILITIES ]]-----------------------------------
 
 --## PRINTF FUNCTION ##--
 local function printf(fmt, ...)
@@ -68,6 +74,30 @@ function num(x)
   end
 end
 
+--## SORT NETWORKS BY SIGNAL STRENGTH ##--
+function spairs(t, order)
+    -- collect the keys
+    local keys = {}
+    for k in pairs(t) do keys[#keys+1] = k end
+
+    -- if order function given, sort by it by passing the table and keys a, b,
+    -- otherwise just sort the keys 
+    if order then
+        table.sort(keys, function(a,b) return order(t, a, b) end)
+    else
+        table.sort(keys)
+    end
+
+    -- return the iterator function
+    local i = 0
+    return function()
+        i = i + 1
+        if keys[i] then
+            return keys[i], t[keys[i]]
+        end
+    end
+end
+
 --## RANDOM MAC ADDRESS ##--
 local function randmac()
   local mac = sys.exec("dd if=/dev/urandom bs=1024 count=1 2>/dev/null|md5sum|sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\)\(..\).*$/00:\2:\3:\4:\5:01/'")
@@ -78,7 +108,7 @@ end
 
 --## FIND THE CONFIG SECTION FOR A GIVEN FIELD AND VALUE ##--
 local function conf_sec(field,val)
-  if (log_lev > 2) then logger(7,"BEGINNING CONFIG SECTION TEST") end
+  if (log_lev > 1) then logger(6,"BEGINNING CONFIG SECTION TEST") end
   if (log_lev > 2) then logger(7,"SEARCH FOR SECTION: { "..field.." }") end
   if (log_lev > 2) then logger(7,"SEARCH FOR VALUE: { "..val.." }") end
   local i = 0
@@ -87,13 +117,13 @@ local function conf_sec(field,val)
     sec = uci:get("wifimanager.@wifi["..i.."]."..field)
     i = i + 1
     if sec == nil then
-       if (log_lev > 2) then logger(7,"NETWROK SECTION TEST RESULT: { FAILED }") end
+       if (log_lev > 1) then logger(6,"NETWORK SECTION TEST RESULT: { FAILED }") end
        return 0 
      end
   until sec == val
   if sec then
-    if (log_lev > 2) then logger(7,"NETWROK SECTION TEST RESULT: { PASSED }") end
-    if (log_lev > 2) then logger(7,"NETWROK SECTION { "..i-1 .." }") end
+    if (log_lev > 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
+    if (log_lev > 2) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
     return i-1
   else
     return 0
@@ -101,8 +131,8 @@ local function conf_sec(field,val)
 end
 
 --## FIND THE STA SECTION IN THE WIFI CONFIG ##--
-local function net_sec()
-  if (log_lev > 2) then logger(7,"BEGINNING NETWROK SECTION TEST") end
+function net_sec()
+  if (log_lev > 1) then logger(6,"BEGINNING NETWORK SECTION TEST") end
   if (log_lev > 2) then logger(7,"SEARCH FOR SECTION: { sta }") end
   local i = 0
   local sec
@@ -110,25 +140,36 @@ local function net_sec()
     sec = uci:get("wireless.@wifi-iface["..i.."].mode")
     i = i + 1
    if sec == nil then 
-     if (log_lev > 2) then logger(7,"NETWROK SECTION TEST RESULT: { NOT FOUND }") end
+     if (log_lev > 1) then logger(6,"NETWORK SECTION TEST RESULT: { FAILED }") end
      return 0
    end
   until sec == "sta"
  if sec then
-  if (log_lev > 2) then logger(7,"NETWROK SECTION TEST RESULT: { PASSED }") end
-  if (log_lev > 2) then logger(7,"NETWROK SECTION { "..i-1 .." }") end
+  if (log_lev > 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
+  if (log_lev > 2) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
   return i-1
  else
   return 0
  end
 end
---[[ END UTILITIES ]]--
 
---[[ NETWORK ]]--
+--## GET THE SSID OF THE CURRENT NETWORK ##--
+function get_ssid()
+ local sec = net_sec() or 0
+ local ssid = uci:get("wireless.@wifi-iface["..sec.."].ssid")
+ return ssid
+end
+---------------------------------------[[ END UTILITIES ]]------------------------------------
+
+
+
+
+
+-----------------------------------------[[ NETWORK ]]----------------------------------------
 
 --## TEST IF NETWORK IS UP ##-- 
 function net_status()
-  if (log_lev > 2) then logger(7,"BEGINNING DEVICE STATUS TEST") end
+  if (log_lev > 1) then logger(6,"BEGINNING DEVICE STATUS TEST") end
   if (log_lev > 2) then logger(7,"DEVICE: { WWAN }") end
   local conn = ubus.connect(nil,600)
   if not conn then
@@ -139,7 +180,7 @@ function net_status()
   local net = conn:call("network.device", "status", { name = "wlan0" })
   conn:close()
   if net then
-    if (log_lev > 2) then logger(7,"DEVICE STATUS TEST RESULT: { PASSED }") end
+    if (log_lev > 1) then logger(6,"DEVICE STATUS TEST RESULT: { PASSED }") end
     return net.up
   end
  return false
@@ -147,7 +188,7 @@ end
 
 --## TEST FOR INTERNET CONNECTION PART B ##--
 local function inet_test()
-  if (log_lev > 2) then logger(7,"BEGINNING INTERNET CONNECTION TEST") end
+  if (log_lev > 1) then logger(6,"BEGINNING INTERNET CONNECTION TEST") end
   local conn = false
   local cmd = string.format("ping -c 1 -W 1 %q 2>&1", ping_addr) 
   local util = io.popen(cmd)
@@ -161,7 +202,7 @@ local function inet_test()
     end
     util:close()
   end
-  if (log_lev > 2) then logger(7,"INTERNET CONNECTION TEST RESULT: { PASSED }") end
+  if (log_lev > 1) then logger(6,"INTERNET CONNECTION TEST RESULT: { PASSED }") end
  return conn
 end
 
@@ -172,7 +213,7 @@ function conn_test(int)
     local has_net = inet_test()
     if not has_net then 
       logger(1,"NETWORK CONNECTION TEST [ "..i.." of "..int.." ] FAILED")
-      nix.nanosleep(1,8)
+      nix.nanosleep(2,0)
       if (i >= int) then return false end
     else
       if (log_lev > 2) then logger(7,"NETWORK CONNECTION TEST COMPLETED SUCCESSFULY ON ATTEMPT: "..i) end
@@ -188,13 +229,13 @@ function network_reload()
   if (log_lev > 0) then logger(6,"RELOADING NETWROK") end
   sys.exec("/etc/init.d/network reload")
   nix.nanosleep(3,0)
-  if (log_lev > 0) then logger(6,"NETWROK RELAOADED SUCCESSFULLY") end
+  if (log_lev > 0) then logger(6,"NETWORK RELAOADED SUCCESSFULLY") end
  return
 end
 
---## SCAN AVAILABLE NETWORKS AND LOAD INTO TABLE, SSID IS KEY BSSID IS VALUE##--
+--## SCAN AVAILABLE NETWORKS AND LOAD INTO SORTED TABLE, SSID IS KEY BSSID IS VALUE##--
 function net_scan(dev)
-  if (log_lev > 2) then logger(7,"NETWROK SCAN { "..dev.." }") end
+  if (log_lev > 2) then logger(7,"NETWORK SCAN { "..dev.." }") end
   local api = iwinfo.type(dev)
   if not api then
     print("No such wireless device: " .. dev)
@@ -219,17 +260,29 @@ function net_scan(dev)
 			    }
     end
   else
-    logger(1,"No scan results or scanning not possible")
+    logger(1,"NO SCAN RESULTS OR SCANNING NOT POSSIBLE")
   end
+  local x = 1
+  local tbuf = {}
   for i,v in pairs(conns) do
-    ssta[i]=conns[i]["bssid"]
+    tbuf[conns[i]["essid"]] = conns[i]["signal"]
+    --print(i,i["signal"])
   end
-  if (log_lev > 2) then logger(7,"NETWROK SCAN COMPLETED") end
+  for k,v in spairs(tbuf, function(t,a,b) return t[b] > t[a] end) do
+    --print("--",k,v)
+    ssta[x]={ k, conns[k]["bssid"] }
+    x = x + 1
+  end
+  if (log_lev > 2) then logger(7,"NETWORK SCAN COMPLETED") end
  return ssta
 end
---[[ END NETWORK ]]--
+---------------------------------------[[ END NETWORK ]]---------------------------------
 
---[[ CONFIGAURATION ]]--
+
+
+
+
+---------------------------------------[[ CONFIGAURATION ]]------------------------------
 
 --## LOAD KNOWN NETWORKS FROM CONFIG INTO TABLE ##--
 local function config_sta()
@@ -240,12 +293,11 @@ local function wifi_sta()
   uci:foreach("wireless", "wifi-iface", function(s) if s.ssid ~= nil then wsta[#wsta+1]=s.ssid end end )
 end
 
---## ADD THE NETWORK TO THE WIRELESS CONFIG ##--
-local function set_client(ssid,enc,key)
+--## ADD THE NETWORK TO THE WIRELESS CONFIG ENABLE IT ##--
+local function set_client(ssid,enc,key,bssid)
  local sec = net_sec() or 0
- local bssid = ssta[ssid]
  if (log_lev > 1) then logger(6,"SETTING UP NEW CLIENT") end
- if (log_lev > 2) then logger(7,"SETTING UP NEW CLIENT "..ssid.." "..enc.." "..key.." "..bssid) end
+ if (log_lev > 1) then logger(7,"SETTING UP NEW CLIENT SSID: "..ssid.." ENCRYPTION: "..enc.." KEY: "..key.." BSSID: "..bssid) end
   if ssid and enc and key and bssid then
     uci:set("wireless.@wifi-iface["..sec.."].ssid="..ssid)
     uci:set("wireless.@wifi-iface["..sec.."].encryption="..enc)
@@ -253,28 +305,27 @@ local function set_client(ssid,enc,key)
     uci:set("wireless.@wifi-iface["..sec.."].bssid="..bssid)
     uci:set("wireless.@wifi-iface["..sec.."].mode=".."sta")
     uci:commit("wireless")
-    if (log_lev > 2) then logger(7,"SETTING UP NEW CLIENT { OK } ") end
+    if (log_lev > 1) then logger(6,"SETTING UP NEW CLIENT { PASSED } ") end
     return true
   else
-    if (log_lev > 2) then logger(7,"SETTING UP NEW CLIENT WAS { FAILED } ") end
+    if (log_lev > 2) then logger(7,"SETTING UP NEW CLIENT { FAILED } ") end
     return false
   end
 end
 
---## PREPARE A NETWORK ENTRY AND SEND IT TO SET_NETWORK TO BE ADDED ##--
-local function prep_client(ssid)
+--## PREPARE A NETWORK ENTRY TO BE ADDED ##--
+local function prep_client(ssid,bssid)
   local sec = conf_sec("ssid", ssid)
-  if (log_lev > 1) then logger(6,"PREPARING NEW CLIENT") end
+  if (log_lev > 1) then logger(6,"PREPARING NEW CLIENT [ "..ssid.." ]") end
   local ssid = ssid
   local enc = uci:get("wifimanager.@wifi["..sec.."].encrypt")
   local key = uci:get("wifimanager.@wifi["..sec.."].key")
    if (log_lev > 2) then logger(7,"SSID: "..ssid.."\tENCRYPTION: "..enc.."\tKEY: "..key) end
-  if set_client(ssid,enc,key) then
+  if set_client(ssid,enc,key,bssid) then
     network_reload()
     repeat
         local up = net_status()
     until up
-    nix.nanosleep(2,5)
     if conn_test(net_tries) then
       return true 
     end
@@ -283,27 +334,24 @@ local function prep_client(ssid)
 end
 
 
---## SCAN FOR NETWORKS AND FFIND A MATCH IF ANY ##--
-function find_network()
+--## SCAN FOR NETWORKS AND FIND A MATCH IF ANY ##--
+function find_network(ssid)
   net_scan("wlan0")
   config_sta()
 
-  for i,v in pairs(ssta) do
-    if util.contains(csta, i) then
-      logger(1,"FOUND A MATCH "..i)
-      if prep_client(i) then
-        logger(1,"NETWORK: [ "..i.." ] HAS BEEN CONFIGURED SUCCESFULLY") 
-        if (new_nets > 0) then
-            if not util.contains(csta, ssid) then
-              add_network()
-            end
-        end
+  for i,v in ipairs(ssta) do
+   if ssid and v[1] ~= ssid or not ssid then
+    if util.contains(csta, v[1]) then
+      logger(1,"FOUND A MATCH "..v[1])
+      if prep_client(v[1],v[2]) then
+        logger(1,"NETWORK: [ "..v[1].." ] HAS BEEN CONFIGURED SUCCESFULLY") 
         return true 
       else
-        logger(2,"NETWORK [ "..i.." ] FAILED CONECTION TEST !!")
+        logger(2,"NETWORK [ "..v[1].." ] FAILED CONECTION TEST !!")
         logger(1,"SEARCHING FOR NEXT NETWORK !!")
       end
-    end      
+    end
+   end      
   end
  logger(2,"NO TRUSTED NETWORKS FOUND !!")
  return false
@@ -319,6 +367,7 @@ function add_ap()
   if ap_enc ~= "none" then
     ap_key = uci:get("wifimanager", "ap", "ap_key")
   end
+  logger(1,"ADDIND AP [ "..ap_ssid.." ]")
   local sec = net_sec()
   local dev = uci:get("wireless.@wifi-iface["..sec.."].device")
   if not util.contains(wsta, ap_ssid) then
@@ -333,7 +382,7 @@ function add_ap()
     uci:set("wireless.@wifi-iface[-1].network=lan")
     uci:commit("wireless")
     network_reload()
-    logger(1,"ADDED AP [ "..ap_ssid.." ]")
+    logger(1,"AP [ "..ap_ssid.." ] CONFIGURED SUCCESSFULLY")
   end
 end
 
@@ -355,3 +404,4 @@ function add_network()
   end 
  return
 end
+---------------------------------------[[ END CONFIGUARATION ]]--------------------------
