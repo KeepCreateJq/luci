@@ -20,4 +20,4 @@ config wifi
 	option encryption 'ON'
 
 config set 'ap'
-	option ap_mode '0
+	option ap_mode '0'
