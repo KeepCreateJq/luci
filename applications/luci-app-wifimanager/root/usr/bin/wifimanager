@@ -30,6 +30,7 @@ local new_nets = tonumber(uci:get("wifimanager", "conn", "new_nets"))
 local log_lev = tonumber(uci:get("wifimanager", "conn", "log_lev"))
 local ap_mode = tonumber(uci:get("wifimanager", "ap", "ap_mode"))
 
+
 --## START TIMES ##--
 local conn_time = os.time()
 
@@ -49,10 +50,12 @@ end
 --## MAIN THREAD ##--
 main = function()
   while true do
-    
+
     --## INTAIAL BOOT, WAIT FOR NETWORK TO COME UP##--
     if (boot_flag < 1) then
+      local essid = net.get_ssid()
       logger(1,"STARTING WIFI MANAGER")
+      logger(1,"CURRENT SSID: "..essid)
     if (log_lev > 0) then logger(6,"WAITING FOR NETWORK ") end
       repeat
         local up = net.net_status()
@@ -60,26 +63,34 @@ main = function()
         logger(6,"WWAN NETWORK IS UP")
         logger(6,"CHECKING FOR INTERNET CONNECTION")
       boot_flag = 1
-      if net.conn_test(5) then 
+      if net.conn_test(boot_tries) then 
         if (log_lev < 1) then logger(1,"INTERNET CONNECTION TEST PASSED") end
         if (new_nets > 0 ) then net.add_network() end
+        if (ap_mode > 0) and (ap_flag < 1) then
+          net.add_ap()
+          ap_flag = 1 
+        end
       else
         logger(1,"INTERNET CONNECTION TEST FAILED")
         logger(1,"SEARCHING FOR AVAILABLE NETWORKS")
-        net.find_network()
+        ap_flag = 0
+        net.find_network(essid)
       end
     end
 
     --## CONNECTION TEST TIMER ##--
     local c = os.difftime(os.time(),conn_time)
+    local essid = net.get_ssid()
     if (verbose > 0) then 
       print("THREAD STATE: { working }")
       print(string.format("CHECK CONNECTION\t{ CURRENT COUNT:%d | INTERVAL: %d }",c,conn_int)) 
     end
-    if (c >= conn_int) then 
-      if net.conn_test(3) then
+    if (c >= conn_int) then
+      logger(1,"CURRENT SSID: "..essid)
+      if (log_lev > 0) then logger(6,"CURRENTLY CONNECTED TO { "..essid.." }") end
+      if net.conn_test(net_tries) then
+        if (new_nets > 0 ) then net.add_network() end
         if (ap_mode > 0) and (ap_flag < 1) then
-        logger(1,"ADDING AP") 
           net.add_ap()
           ap_flag = 1 
         end
@@ -91,7 +102,8 @@ main = function()
           logger(1,"INTERNET CONNECTION TEST FAILED")
           logger(1,"SEARCHING FOR AVAILABLE NETWORKS")
         end
-        net.find_network()
+        ap_flag = 0
+        net.find_network(essid)
       end
      conn_time = os.time()
     end
@@ -129,6 +141,6 @@ while coroutine.status(main_thread)~="dead" do
     nix.nanosleep(1,0)
   else
     select(2,coroutine.resume(main_thread))
-	nix.nanosleep(1,0)
+    nix.nanosleep(1,0)
   end
 end
