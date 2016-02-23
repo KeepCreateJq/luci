@@ -20,6 +20,7 @@ local ssta = {}
 local csta = {}
 local wsta = {}
 local essid
+local debug = 0
 
 --## LOCAL VARS ##--
 local ping_addr = uci:get("wifimanager", "conn", "PingLocation")
@@ -108,22 +109,22 @@ end
 
 --## FIND THE CONFIG SECTION FOR A GIVEN FIELD AND VALUE ##--
 local function conf_sec(field,val)
-  if (log_lev > 1) then logger(6,"BEGINNING CONFIG SECTION TEST") end
-  if (log_lev > 2) then logger(7,"SEARCH FOR SECTION: { "..field.." }") end
-  if (log_lev > 2) then logger(7,"SEARCH FOR VALUE: { "..val.." }") end
+  if (debug > 1) then logger(6,"BEGINNING CONFIG SECTION TEST") end
+  if (debug > 2) then logger(7,"SEARCH FOR SECTION: { "..field.." }") end
+  if (debug > 2) then logger(7,"SEARCH FOR VALUE: { "..val.." }") end
   local i = 0
   local sec
   repeat
     sec = uci:get("wifimanager.@wifi["..i.."]."..field)
     i = i + 1
     if sec == nil then
-       if (log_lev > 1) then logger(6,"NETWORK SECTION TEST RESULT: { FAILED }") end
+       if (debug > 1) then logger(6,"NETWORK SECTION TEST RESULT: { FAILED }") end
        return 0 
      end
   until sec == val
   if sec then
-    if (log_lev > 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
-    if (log_lev > 2) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
+    if ( debug > 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
+    if ( debug > 2) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
     return i-1
   else
     return 0
@@ -132,21 +133,21 @@ end
 
 --## FIND THE STA SECTION IN THE WIFI CONFIG ##--
 function net_sec(no_log)
-  if (log_lev > 1) and (no_log ~= 1) then logger(6,"BEGINNING NETWORK SECTION TEST") end
-  if (log_lev > 2) and (no_log ~= 1) then logger(7,"SEARCH FOR SECTION: { sta }") end
+  if (debug > 1) and (no_log ~= 1) then logger(6,"BEGINNING NETWORK SECTION TEST") end
+  if (debug > 2) and (no_log ~= 1) then logger(7,"SEARCH FOR SECTION: { sta }") end
   local i = 0
   local sec
   repeat
     sec = uci:get("wireless.@wifi-iface["..i.."].mode")
     i = i + 1
    if sec == nil then 
-     if (log_lev > 1) then logger(6,"NETWORK SECTION TEST RESULT: { FAILED }") end
+     if (debug > 1) then logger(6,"NETWORK SECTION TEST RESULT: { FAILED }") end
      return 0
    end
   until sec == "sta"
  if sec then
-  if (log_lev > 1) and (no_log ~= 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
-  if (log_lev > 2) and (no_log ~= 1) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
+  if (debug > 1) and (no_log ~= 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
+  if (debug > 2) and (no_log ~= 1) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
   return i-1
  else
   return 0
@@ -169,7 +170,7 @@ end
 
 --## TEST IF NETWORK IS UP ##-- 
 function net_status()
-  if (log_lev > 1) then logger(6,"BEGINNING DEVICE STATUS TEST") end
+  if (log_lev > 2) then logger(6,"BEGINNING DEVICE STATUS TEST") end
   if (log_lev > 2) then logger(7,"DEVICE: { WWAN }") end
   local conn = ubus.connect(nil,600)
   if not conn then
@@ -180,7 +181,7 @@ function net_status()
   local net = conn:call("network.device", "status", { name = "wlan0" })
   conn:close()
   if net then
-    if (log_lev > 1) then logger(6,"DEVICE STATUS TEST RESULT: { PASSED }") end
+    if (debug > 1) then logger(6,"DEVICE STATUS TEST RESULT: { PASSED }") end
     return net.up
   end
  return false
@@ -188,7 +189,7 @@ end
 
 --## TEST FOR INTERNET CONNECTION PART B ##--
 local function inet_test()
-  if (log_lev > 1) then logger(6,"BEGINNING INTERNET CONNECTION TEST") end
+  if (debug > 1) then logger(6,"BEGINNING INTERNET CONNECTION TEST") end
   local conn = false
   local cmd = string.format("ping -c 1 -W 1 %q 2>&1", ping_addr) 
   local util = io.popen(cmd)
@@ -213,10 +214,10 @@ function conn_test(int)
     local has_net = inet_test()
     if not has_net then 
       logger(1,"NETWORK CONNECTION TEST [ "..i.." of "..int.." ] FAILED")
-      nix.nanosleep(2,0)
+      nix.nanosleep(1,0)
       if (i >= int) then return false end
     else
-      if (log_lev > 2) then logger(7,"NETWORK CONNECTION TEST COMPLETED SUCCESSFULY ON ATTEMPT: "..i) end
+      if (debug > 2) then logger(7,"NETWORK CONNECTION TEST COMPLETED SUCCESSFULY ON ATTEMPT: "..i) end
       if (log_lev > 1) then logger(6,"NETWORK CONNECTION TEST [ "..i.." of "..int.." ] PASSED") end
       break
     end
@@ -235,7 +236,7 @@ end
 
 --## SCAN AVAILABLE NETWORKS AND LOAD INTO SORTED TABLE, SSID IS KEY BSSID IS VALUE##--
 function net_scan(dev)
-  if (log_lev > 2) then logger(7,"NETWORK SCAN { "..dev.." }") end
+  if (debug > 2) then logger(7,"NETWORK SCAN { "..dev.." }") end
   local api = iwinfo.type(dev)
   if not api then
     print("No such wireless device: " .. dev)
@@ -273,7 +274,7 @@ function net_scan(dev)
     ssta[x]={ k, conns[k]["bssid"] }
     x = x + 1
   end
-  if (log_lev > 2) then logger(7,"NETWORK SCAN COMPLETED") end
+  if (debug > 2) then logger(7,"NETWORK SCAN COMPLETED") end
  return ssta
 end
 ---------------------------------------[[ END NETWORK ]]---------------------------------
@@ -296,8 +297,8 @@ end
 --## ADD THE NETWORK TO THE WIRELESS CONFIG ENABLE IT ##--
 local function set_client(ssid,enc,key,bssid)
  local sec = net_sec() or 0
- if (log_lev > 1) then logger(6,"SETTING UP NEW CLIENT") end
- if (log_lev > 1) then logger(7,"SETTING UP NEW CLIENT SSID: "..ssid.." ENCRYPTION: "..enc.." KEY: "..key.." BSSID: "..bssid) end
+ if (log_lev == 1) then logger(6,"SETTING UP NEW CLIENT") end
+ if (log_lev > 1) then logger(7,"SETTING UP NEW CLIENT \nSSID: "..ssid.." \nENCRYPTION: "..enc.." \nKEY: "..key.." \nBSSID: "..bssid) end
   if ssid and enc and key and bssid then
     uci:set("wireless.@wifi-iface["..sec.."].ssid="..ssid)
     uci:set("wireless.@wifi-iface["..sec.."].encryption="..enc)
@@ -305,7 +306,7 @@ local function set_client(ssid,enc,key,bssid)
     uci:set("wireless.@wifi-iface["..sec.."].bssid="..bssid)
     uci:set("wireless.@wifi-iface["..sec.."].mode=".."sta")
     uci:commit("wireless")
-    if (log_lev > 1) then logger(6,"SETTING UP NEW CLIENT { PASSED } ") end
+    if (log_lev > 2) then logger(6,"SETTING UP NEW CLIENT { PASSED } ") end
     return true
   else
     if (log_lev > 2) then logger(7,"SETTING UP NEW CLIENT { FAILED } ") end
@@ -316,7 +317,7 @@ end
 --## PREPARE A NETWORK ENTRY TO BE ADDED ##--
 local function prep_client(ssid,bssid)
   local sec = conf_sec("ssid", ssid)
-  if (log_lev > 1) then logger(6,"PREPARING NEW CLIENT [ "..ssid.." ]") end
+  if (log_lev > 2) then logger(6,"PREPARING NEW CLIENT [ "..ssid.." ]") end
   local ssid = ssid
   local enc = uci:get("wifimanager.@wifi["..sec.."].encrypt")
   local key = uci:get("wifimanager.@wifi["..sec.."].key")
