@@ -10,10 +10,6 @@ local m, s, t, o
 
 m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can configure your Networks"))
 
-m.on_after_commit = function()
-  sys.exec("reload_config &")
-end
-
 --
 -- AP
 --
@@ -28,14 +24,12 @@ o.rmempty = false
 
 o = t:taboption("apn", Value, "ap_ssid", translate("SSID"))
 o.default = "Dummy"
-o.rmempty = true
-o:depends("ap_mode", "1")
+o.rmempty = false
 
 
 o = t:taboption("apn", ListValue, "ap_encrypt", translate("Encyption Type"))
 o.default = "none"
-o.rmempty = true
-o:depends("ap_mode", "1")
+o.rmempty = false
 o:value("none", "No Encryption")
 o:value("wep-open", "Wep Open")
 o:value("wep-shared", "No Wep Shared")
@@ -49,7 +43,7 @@ o:depends("ap_encrypt", "wep-shared")
 o:depends("ap_encrypt", "psk")
 o:depends("ap_encrypt", "psk2")
 o:depends("ap_encrypt", "psk-mixed")
-o.rmempty = true
+o.rmempty = false
 
 --
 -- Trusted Networks
