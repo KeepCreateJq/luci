@@ -2,7 +2,7 @@
 
 --[[ wifimanger main module ]]--
 
--- Version 1.01
+-- Version 1.00
 -- By Hostle 2/29/2016
 
 --## DEPENDENTS ##--
@@ -55,12 +55,12 @@ main = function()
     if (boot_flag < 1) then
       local essid = net.get_ssid()
       logger(1,"STARTING WIFI MANAGER")
-      logger(1,"CURRENT SSID: "..essid)
     if (log_lev > 0) then logger(6,"WAITING FOR NETWORK ") end
       repeat
         local up = net.net_status()
       until up 
         logger(6,"WWAN NETWORK IS UP")
+        logger(1,"CURRENT SSID: "..essid)
         logger(6,"CHECKING FOR INTERNET CONNECTION")
       boot_flag = 1
       if net.conn_test(boot_tries) then 
@@ -86,7 +86,6 @@ main = function()
       print(string.format("CHECK CONNECTION\t{ CURRENT COUNT:%d | INTERVAL: %d }",c,conn_int)) 
     end
     if (c >= conn_int) then
-      logger(1,"CURRENT SSID: "..essid)
       if (log_lev > 0) then logger(6,"CURRENTLY CONNECTED TO { "..essid.." }") end
       if net.conn_test(net_tries) then
         if (new_nets > 0 ) then net.add_network() end
