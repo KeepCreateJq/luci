@@ -93,9 +93,6 @@ main = function()
           net.add_ap()
           ap_flag = 1 
         end
-        if (log_lev > 0) then 
-          logger(1,"INTERNET CONNECTION TEST PASSED") 
-        end
       else
         if (log_lev > 0) then
           logger(1,"INTERNET CONNECTION TEST FAILED")
