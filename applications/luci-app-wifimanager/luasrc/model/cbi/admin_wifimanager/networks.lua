@@ -10,6 +10,10 @@ local m, s, t, o
 
 m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can configure your Networks"))
 
+m.on_after_commit = function()
+  sys.exec("reload_config &")
+end
+
 --
 -- AP
 --
