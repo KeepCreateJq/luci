@@ -131,9 +131,9 @@ local function conf_sec(field,val)
 end
 
 --## FIND THE STA SECTION IN THE WIFI CONFIG ##--
-function net_sec()
-  if (log_lev > 1) then logger(6,"BEGINNING NETWORK SECTION TEST") end
-  if (log_lev > 2) then logger(7,"SEARCH FOR SECTION: { sta }") end
+function net_sec(no_log)
+  if (log_lev > 1) and (no_log ~= 1) then logger(6,"BEGINNING NETWORK SECTION TEST") end
+  if (log_lev > 2) and (no_log ~= 1) then logger(7,"SEARCH FOR SECTION: { sta }") end
   local i = 0
   local sec
   repeat
@@ -145,8 +145,8 @@ function net_sec()
    end
   until sec == "sta"
  if sec then
-  if (log_lev > 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
-  if (log_lev > 2) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
+  if (log_lev > 1) and (no_log ~= 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
+  if (log_lev > 2) and (no_log ~= 1) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
   return i-1
  else
   return 0
@@ -155,7 +155,7 @@ end
 
 --## GET THE SSID OF THE CURRENT NETWORK ##--
 function get_ssid()
- local sec = net_sec() or 0
+ local sec = net_sec(1) or 0
  local ssid = uci:get("wireless.@wifi-iface["..sec.."].ssid")
  return ssid
 end
