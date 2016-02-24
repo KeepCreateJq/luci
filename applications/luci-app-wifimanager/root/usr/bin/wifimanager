@@ -2,7 +2,7 @@
 
 --[[ wifimanger main module ]]--
 
--- Version 1.00
+-- Version 1.00.4
 -- By Hostle 2/29/2016
 
 --## DEPENDENTS ##--
@@ -12,17 +12,18 @@ local nix = require ("nixio")
 local net = require ("wifimanager.functions")
 local util = require ("luci.util")
 local sys = require ("luci.sys")
-local uci = uci.cursor()
 
 --## VERSION INFO ##--
-local version = "1.00"
+local version = "1.00.4"
 
 --## LOCAL FLAGS ##--
 local verbose = 0
 local boot_flag = 0
 local ap_flag = 0
+local abort = 0
 
 --## LOCAL VARS ##--
+local uci = uci.cursor()
 local ping_addr = uci:get("wifimanager", "conn", "PingLocation")
 local boot_tries = tonumber(uci:get("wifimanager", "conn", "boot_tries"))
 local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
@@ -73,8 +74,15 @@ main = function()
       else
         logger(1,"INTERNET CONNECTION TEST FAILED")
         logger(1,"SEARCHING FOR AVAILABLE NETWORKS")
-        ap_flag = 0
-        net.find_network(essid)
+        if net.config_check("wireless") or (abort >= 3) then
+          abort = 0
+          ap_flag = 0
+          net.find_network(essid)
+       else
+         logger(2,"WIRELESS CONFIG HAS PENDING CHANGES ... ABORTING !!")
+         abort = abort + 1
+         logger(2,"ABORT COUNT: "..abort)
+       end
       end
     end
 
@@ -98,8 +106,15 @@ main = function()
           logger(1,"INTERNET CONNECTION TEST FAILED")
           logger(1,"SEARCHING FOR AVAILABLE NETWORKS")
         end
-        ap_flag = 0
-        net.find_network(essid)
+        if net.config_check("wireless") or (abort >= 3) then
+          abort = 0
+          ap_flag = 0
+          net.find_network(essid)
+       else
+	 logger(2,"WIRELESS CONFIG HAS PENDING CHANGES ... ABORTING !!")
+         abort = abort + 1
+         logger(2,"ABORT COUNT: "..abort)
+      end
       end
      conn_time = os.time()
     end
@@ -137,6 +152,5 @@ while coroutine.status(main_thread)~="dead" do
     nix.nanosleep(1,0)
   else
     select(2,coroutine.resume(main_thread))
-    nix.nanosleep(1,0)
   end
 end
