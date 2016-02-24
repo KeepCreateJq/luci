@@ -132,9 +132,9 @@ local function conf_sec(field,val)
 end
 
 --## FIND THE STA SECTION IN THE WIFI CONFIG ##--
-function net_sec(no_log)
-  if (debug > 1) and (no_log ~= 1) then logger(6,"BEGINNING NETWORK SECTION TEST") end
-  if (debug > 2) and (no_log ~= 1) then logger(7,"SEARCH FOR SECTION: { sta }") end
+function net_sec(val)
+  if (debug > 1)  then logger(6,"BEGINNING NETWORK SECTION TEST") end
+  if (debug > 2) then logger(7,"SEARCH FOR SECTION: { sta }") end
   local i = 0
   local sec
   repeat
@@ -144,10 +144,10 @@ function net_sec(no_log)
      if (debug > 1) then logger(6,"NETWORK SECTION TEST RESULT: { FAILED }") end
      return 0
    end
-  until sec == "sta"
+  until sec == val
  if sec then
-  if (debug > 1) and (no_log ~= 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
-  if (debug > 2) and (no_log ~= 1) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
+  if (debug > 1) then logger(6,"NETWORK SECTION TEST RESULT: { PASSED }") end
+  if (debug > 2) then logger(7,"NETWORK SECTION { "..i-1 .." }") end
   return i-1
  else
   return 0
@@ -156,7 +156,7 @@ end
 
 --## GET THE SSID OF THE CURRENT NETWORK ##--
 function get_ssid()
- local sec = net_sec(1) or 0
+ local sec = net_sec("sta") or 0
  local ssid = uci:get("wireless.@wifi-iface["..sec.."].ssid")
  return ssid
 end
@@ -296,7 +296,7 @@ end
 
 --## ADD THE NETWORK TO THE WIRELESS CONFIG ENABLE IT ##--
 local function set_client(ssid,enc,key,bssid)
- local sec = net_sec() or 0
+ local sec = net_sec("sta") or 0
  if (log_lev == 1) then logger(6,"SETTING UP NEW CLIENT") end
  if (log_lev > 1) then logger(7,"SETTING UP NEW CLIENT \nSSID: "..ssid.." \nENCRYPTION: "..enc.." \nKEY: "..key.." \nBSSID: "..bssid) end
   if ssid and enc and key and bssid then
@@ -369,9 +369,10 @@ function add_ap()
     ap_key = uci:get("wifimanager", "ap", "ap_key")
   end
   logger(1,"ADDIND AP [ "..ap_ssid.." ]")
-  local sec = net_sec()
+  local sec = net_sec("ap")
   local dev = uci:get("wireless.@wifi-iface["..sec.."].device")
-  if not util.contains(wsta, ap_ssid) then
+  local has_api = uci:get("wireless.@wifi-iface["..sec.."].mode")
+  if not util.contains(wsta, ap_ssid) and has_ap ~= "ap" then
     uci:add("wireless", "wifi-iface")
     uci:set("wireless.@wifi-iface[-1].device="..dev)
     uci:set("wireless.@wifi-iface[-1].mode=ap")
@@ -389,7 +390,7 @@ end
 
 --## ADD THE CURRENT NETWORK TO THE CONFIG IF IT DOESN'T EXIST ##--
 function add_network()
-  local sec = net_sec()
+  local sec = net_sec("sta")
   config_sta()
   local ssid = uci:get("wireless.@wifi-iface["..sec.."].ssid")
   local enc = uci:get("wireless.@wifi-iface["..sec.."].encryption")
