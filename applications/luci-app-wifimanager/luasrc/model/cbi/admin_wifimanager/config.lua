@@ -55,15 +55,9 @@ o.default = "www.google.com"
 o.rmempty = false
 
 o = s:option(Flag, "new_nets", translate("Auto Add Newworks"))
-o.default = 0
-o.disabled = 0
-o.enabled = 1
 o.rmempty = false
 
 o = s:option(Flag, "randMac", translate("Randonmize Mac Address"))
 o.rmempty = false
-o.default = 0
-o.disabled = 0
-o.enabled = 1
 
 return m
