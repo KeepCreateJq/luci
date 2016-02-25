@@ -1,6 +1,6 @@
 --[[ NETWORK MANAGER MODULE ]]--
 
--- VERSION 1.00.4
+-- VERSION 1.00.5
 -- By HOSTLE 2/17/2016
 
 module("wifimanager.functions", package.seeall)
@@ -169,7 +169,9 @@ end
 function get_ssid()
  local sec = net_sec("sta") or 0
  local uci = uci.cursor()
+ local is_up = uci:get("wireless.@wifi-iface["..sec.."].disabled")
  local ssid = uci:get("wireless.@wifi-iface["..sec.."].ssid")
+ if is_up == "1" then return "disabled" end
  return ssid
 end
 ---------------------------------------[[ END UTILITIES ]]------------------------------------
@@ -225,6 +227,7 @@ function conn_test(int)
     local has_net = inet_test()
     if not has_net then 
       logger(1,"NETWORK CONNECTION TEST [ "..i.." of "..int.." ] FAILED")
+      nix.nanosleep(1,0)
       if (i >= int) then return false end
     else
       if (debug > 2) then logger(7,"NETWORK CONNECTION TEST COMPLETED SUCCESSFULY ON ATTEMPT: "..i) end
@@ -237,7 +240,7 @@ end
 
 --## RELOAD NETWORK ##--
 function network_reload()
-  if (log_lev > 0) then logger(6,"RELOADING NETWROK") end
+  if (log_lev > 0) then logger(6,"RELOADING NETWORK") end
   sys.exec("/etc/init.d/network reload")
   nix.nanosleep(3,0)
   if (log_lev > 0) then logger(6,"NETWORK RELAOADED SUCCESSFULLY") end
@@ -310,7 +313,7 @@ end
 local function set_client(ssid,enc,key,bssid)
  local sec = net_sec("sta") or 0
  if (log_lev == 1) then logger(6,"SETTING UP NEW CLIENT") end
- if (log_lev > 1) then logger(7,"SETTING UP NEW CLIENT SSID: "..ssid.." ENCRYPTION: "..enc.." KEY: "..key.." BSSID: "..bssid) end
+ if (log_lev > 1) then logger(7,"SETTING UP NEW CLIENT SSID: "..ssid) end
   if ssid and enc and key and bssid then
     local uci = uci.cursor()
     uci:set("wireless.@wifi-iface["..sec.."].ssid="..ssid)
@@ -351,6 +354,8 @@ end
 
 --## SCAN FOR NETWORKS AND FIND A MATCH IF ANY ##--
 function find_network(ssid)
+  local uci = uci.cursor()
+  local sec = net_sec("sta")
   net_scan("wlan0")
   config_sta()
 
@@ -358,6 +363,10 @@ function find_network(ssid)
    if ssid and v[1] ~= ssid or not ssid then
     if util.contains(csta, v[1]) then
       logger(1,"FOUND A MATCH "..v[1])
+      if ssid == "disabled" then 
+        uci:set("wireless.@wifi-iface["..sec.."].disabled=0")
+        uci:commit("wireless")
+      end
       if prep_client(v[1],v[2]) then
         logger(1,"NETWORK: [ "..v[1].." ] HAS BEEN CONFIGURED SUCCESFULLY") 
         return true 
@@ -368,7 +377,13 @@ function find_network(ssid)
     end
    end      
   end
- logger(2,"NO TRUSTED NETWORKS FOUND !!")
+  logger(2,"NO TRUSTED NETWORKS FOUND !!")
+  if ssid ~= "disabled" then
+    logger(1,"DISABLE STA UNTIL A USABLE NETWORK IS FOUND")
+    uci:set("wireless.@wifi-iface["..sec.."].disabled=1")
+    uci:commit("wireless")
+    network_reload()
+  end
  return false
 end
 
