@@ -1,6 +1,6 @@
 --[[ NETWORK MANAGER MODULE ]]--
 
--- VERSION 1.00.5
+-- VERSION 1.00.6
 -- By HOSTLE 2/17/2016
 
 module("wifimanager.functions", package.seeall)
@@ -243,7 +243,7 @@ function network_reload()
   if (log_lev > 0) then logger(6,"RELOADING NETWORK") end
   sys.exec("/etc/init.d/network reload")
   nix.nanosleep(3,0)
-  if (log_lev > 0) then logger(6,"NETWORK RELAOADED SUCCESSFULLY") end
+  if (log_lev > 0) then logger(6,"NETWORK RELOADED SUCCESSFULLY") end
  return
 end
 
@@ -399,9 +399,9 @@ function add_ap()
     ap_key = uci:get("wifimanager", "ap", "ap_key")
   end
   local sec = net_sec("ap") 
-  local dev = uci:get("wireless.@wifi-iface["..sec.."].device")
+  local dev = uci:get("wireless.@wifi-iface[-1].device")
   local has_api = uci:get("wireless.@wifi-iface["..sec.."].mode")
-  if not has_ap ~= "ap" and util.contains(wsta, ap_ssid) then
+  if has_api ~= "ap" and util.contains(wsta, ap_ssid) then
     logger(1,"NO AP FOUND !!")
     logger(1,"ADDING AP [ "..ap_ssid.." ]")
     uci:add("wireless", "wifi-iface")
