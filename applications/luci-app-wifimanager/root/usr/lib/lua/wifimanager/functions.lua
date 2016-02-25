@@ -1,6 +1,6 @@
 --[[ NETWORK MANAGER MODULE ]]--
 
--- VERSION 1.01
+-- VERSION 1.00.5
 -- By HOSTLE 2/17/2016
 
 module("wifimanager.functions", package.seeall)
@@ -8,11 +8,9 @@ module("wifimanager.functions", package.seeall)
 --## DEPENDANCIES ##--
 require ("iwinfo")
 require ("uci")
-
 local nix = require ("nixio")
 local util = require ("luci.util")
 local sys = require ("luci.sys")
-local uci = uci.cursor()
 
 --## LOCAL BUFFERS ##--
 local buf = {}
@@ -23,6 +21,7 @@ local essid
 local debug = 0
 
 --## LOCAL VARS ##--
+local uci = uci.cursor()
 local ping_addr = uci:get("wifimanager", "conn", "PingLocation")
 local boot_tries = tonumber(uci:get("wifimanager", "conn", "boot_tries"))
 local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
@@ -99,6 +98,16 @@ function spairs(t, order)
     end
 end
 
+--## PREVENT COLLISIONS BETWEEN LUCI AND WIFIMANAGER ##--
+function config_check(config)
+  local uci = uci.cursor()
+  local chg = uci:changes(config) or {}
+  for i,v in pairs(chg) do
+   if i == config then return false end
+  end
+ return true
+end
+  
 --## RANDOM MAC ADDRESS ##--
 local function randmac()
   local mac = sys.exec("dd if=/dev/urandom bs=1024 count=1 2>/dev/null|md5sum|sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\)\(..\).*$/00:\2:\3:\4:\5:01/'")
@@ -114,6 +123,7 @@ local function conf_sec(field,val)
   if (debug > 2) then logger(7,"SEARCH FOR VALUE: { "..val.." }") end
   local i = 0
   local sec
+  local uci = uci.cursor()
   repeat
     sec = uci:get("wifimanager.@wifi["..i.."]."..field)
     i = i + 1
@@ -137,6 +147,7 @@ function net_sec(val)
   if (debug > 2) then logger(7,"SEARCH FOR SECTION: { sta }") end
   local i = 0
   local sec
+  local uci = uci.cursor()
   repeat
     sec = uci:get("wireless.@wifi-iface["..i.."].mode")
     i = i + 1
@@ -157,7 +168,10 @@ end
 --## GET THE SSID OF THE CURRENT NETWORK ##--
 function get_ssid()
  local sec = net_sec("sta") or 0
+ local uci = uci.cursor()
+ local is_up = uci:get("wireless.@wifi-iface["..sec.."].disabled")
  local ssid = uci:get("wireless.@wifi-iface["..sec.."].ssid")
+ if is_up == "1" then return "disabled" end
  return ssid
 end
 ---------------------------------------[[ END UTILITIES ]]------------------------------------
@@ -203,7 +217,6 @@ local function inet_test()
     end
     util:close()
   end
-  if (log_lev > 1) then logger(6,"INTERNET CONNECTION TEST RESULT: { PASSED }") end
  return conn
 end
 
@@ -227,10 +240,10 @@ end
 
 --## RELOAD NETWORK ##--
 function network_reload()
-  if (log_lev > 0) then logger(6,"RELOADING NETWROK") end
+  if (log_lev > 0) then logger(6,"RELOADING NETWORK") end
   sys.exec("/etc/init.d/network reload")
   nix.nanosleep(3,0)
-  if (log_lev > 0) then logger(6,"NETWORK RELAOADED SUCCESSFULLY") end
+  if (log_lev > 0) then logger(6,"NETWORK RELOADED SUCCESSFULLY") end
  return
 end
 
@@ -287,10 +300,12 @@ end
 
 --## LOAD KNOWN NETWORKS FROM CONFIG INTO TABLE ##--
 local function config_sta()
+  local uci = uci.cursor()
   uci:foreach("wifimanager", "wifi", function(s) if s.ssid ~= nil then csta[#csta+1]=s.ssid end end )
 end
 
 local function wifi_sta()
+  local uci = uci.cursor()
   uci:foreach("wireless", "wifi-iface", function(s) if s.ssid ~= nil then wsta[#wsta+1]=s.ssid end end )
 end
 
@@ -298,8 +313,9 @@ end
 local function set_client(ssid,enc,key,bssid)
  local sec = net_sec("sta") or 0
  if (log_lev == 1) then logger(6,"SETTING UP NEW CLIENT") end
- if (log_lev > 1) then logger(7,"SETTING UP NEW CLIENT \nSSID: "..ssid.." \nENCRYPTION: "..enc.." \nKEY: "..key.." \nBSSID: "..bssid) end
+ if (log_lev > 1) then logger(7,"SETTING UP NEW CLIENT SSID: "..ssid) end
   if ssid and enc and key and bssid then
+    local uci = uci.cursor()
     uci:set("wireless.@wifi-iface["..sec.."].ssid="..ssid)
     uci:set("wireless.@wifi-iface["..sec.."].encryption="..enc)
     uci:set("wireless.@wifi-iface["..sec.."].key="..key)
@@ -319,6 +335,7 @@ local function prep_client(ssid,bssid)
   local sec = conf_sec("ssid", ssid)
   if (log_lev > 2) then logger(6,"PREPARING NEW CLIENT [ "..ssid.." ]") end
   local ssid = ssid
+  local uci = uci.cursor()
   local enc = uci:get("wifimanager.@wifi["..sec.."].encrypt")
   local key = uci:get("wifimanager.@wifi["..sec.."].key")
    if (log_lev > 2) then logger(7,"SSID: "..ssid.."\tENCRYPTION: "..enc.."\tKEY: "..key) end
@@ -337,6 +354,8 @@ end
 
 --## SCAN FOR NETWORKS AND FIND A MATCH IF ANY ##--
 function find_network(ssid)
+  local uci = uci.cursor()
+  local sec = net_sec("sta")
   net_scan("wlan0")
   config_sta()
 
@@ -344,6 +363,10 @@ function find_network(ssid)
    if ssid and v[1] ~= ssid or not ssid then
     if util.contains(csta, v[1]) then
       logger(1,"FOUND A MATCH "..v[1])
+      if ssid == "disabled" then 
+        uci:set("wireless.@wifi-iface["..sec.."].disabled=0")
+        uci:commit("wireless")
+      end
       if prep_client(v[1],v[2]) then
         logger(1,"NETWORK: [ "..v[1].." ] HAS BEEN CONFIGURED SUCCESFULLY") 
         return true 
@@ -354,7 +377,13 @@ function find_network(ssid)
     end
    end      
   end
- logger(2,"NO TRUSTED NETWORKS FOUND !!")
+  logger(2,"NO TRUSTED NETWORKS FOUND !!")
+  if ssid ~= "disabled" then
+    logger(1,"DISABLE STA UNTIL A USABLE NETWORK IS FOUND")
+    uci:set("wireless.@wifi-iface["..sec.."].disabled=1")
+    uci:commit("wireless")
+    network_reload()
+  end
  return false
 end
 
@@ -362,17 +391,19 @@ end
 function add_ap()
   if ap_mode ~= 1 then return end
   wifi_sta()
+  local uci = uci.cursor()
   local ap_ssid = uci:get("wifimanager", "ap", "ap_ssid")
   local ap_enc = uci:get("wifimanager", "ap", "ap_encrypt")
   local ap_key
   if ap_enc ~= "none" then
     ap_key = uci:get("wifimanager", "ap", "ap_key")
   end
-  logger(1,"ADDIND AP [ "..ap_ssid.." ]")
-  local sec = net_sec("ap")
-  local dev = uci:get("wireless.@wifi-iface["..sec.."].device")
+  local sec = net_sec("ap") 
+  local dev = uci:get("wireless.@wifi-iface[-1].device")
   local has_api = uci:get("wireless.@wifi-iface["..sec.."].mode")
-  if not util.contains(wsta, ap_ssid) and has_ap ~= "ap" then
+  if has_api ~= "ap" and util.contains(wsta, ap_ssid) then
+    logger(1,"NO AP FOUND !!")
+    logger(1,"ADDING AP [ "..ap_ssid.." ]")
     uci:add("wireless", "wifi-iface")
     uci:set("wireless.@wifi-iface[-1].device="..dev)
     uci:set("wireless.@wifi-iface[-1].mode=ap")
@@ -392,6 +423,7 @@ end
 function add_network()
   local sec = net_sec("sta")
   config_sta()
+  local uci = uci.cursor()
   local ssid = uci:get("wireless.@wifi-iface["..sec.."].ssid")
   local enc = uci:get("wireless.@wifi-iface["..sec.."].encryption")
   local key = uci:get("wireless.@wifi-iface["..sec.."].key")
