@@ -2,7 +2,7 @@
 
 --[[ wifimanger main module ]]--
 
--- Version 1.00
+-- Version 1.00.5
 -- By Hostle 2/29/2016
 
 --## DEPENDENTS ##--
@@ -14,7 +14,7 @@ local util = require ("luci.util")
 local sys = require ("luci.sys")
 
 --## VERSION INFO ##--
-local version = "1.00"
+local version = "1.00.5"
 
 --## LOCAL FLAGS ##--
 local verbose = 0
