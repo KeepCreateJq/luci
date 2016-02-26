@@ -8,7 +8,7 @@ local sys = require ("luci.sys")
 
 local m, s, o
 
-m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can configure your WifiManager Settings"))
+m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can configure your Wifi Manager Settings"))
 
 m.on_after_commit = function()
   sys.exec("reload_config &")
