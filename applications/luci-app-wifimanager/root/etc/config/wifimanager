@@ -1,23 +1,21 @@
 config set 'conn'
-	option boot_tries '5'
-	option PingLocation 'www.google.com'
-	option randMac '0'
-	option net_tries '3'
-	option log_lev '2'
 	option ConnCheckTimer '30'
+	option boot_tries '6'
+	option net_tries '5'
+	option log_lev '2'
+	option PingLocation 'www.google.com'
 	option new_nets '0'
+	option randMac '0'
+
+config set 'ap'
+	option ap_mode '0'
 
 config wifi
-	option encrypt 'psk2'
-	option encryption 'ON'
 	option ssid 'Dummy1'
+	option encrypt 'psk'
 	option key 'password1'
 
 config wifi
 	option ssid 'Dummy2'
+	option encrypt 'psk2'
 	option key 'password2'
-	option encrypt 'psk'
-	option encryption 'ON'
-
-config set 'ap'
-	option ap_mode '0'
