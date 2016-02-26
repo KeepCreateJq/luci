@@ -10,10 +10,6 @@ local m, s, t, o
 
 m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can configure your Networks"))
 
-m.on_after_commit = function()
-  sys.exec("reload_config &")
-end
-
 --
 -- AP
 --
@@ -42,12 +38,12 @@ o:value("psk2", "WPA-PSK2")
 o:value("psk-mixed", "WPA-PSK/WPA2-PSK Mixed Mode")
 
 o = t:taboption("apn", Value, "ap_key", translate("Password"))
+o.rmempty = false
 o:depends("ap_encrypt", "wep-open")
 o:depends("ap_encrypt", "wep-shared")
 o:depends("ap_encrypt", "psk")
 o:depends("ap_encrypt", "psk2")
 o:depends("ap_encrypt", "psk-mixed")
-o.rmempty = false
 
 --
 -- Trusted Networks
@@ -69,6 +65,7 @@ o.rmempty = false
 
 o = s:taboption("networks", ListValue, "encrypt", translate("Encyption Type"))
 o.default = "none"
+o.rmempty = false
 o:value("none", "No Encryption")
 o:value("wep-open", "Wep Open")
 o:value("wep-shared", "No Wep Shared")
@@ -77,11 +74,11 @@ o:value("psk2", "WPA-PSK2")
 o:value("psk-mixed", "WPA-PSK/WPA2-PSK Mixed Mode")
 
 o = s:taboption("networks", Value, "key", translate("Password"))
+o.rmempty = false
 o:depends("encrypt", "wep-open")
 o:depends("encrypt", "wep-shared")
 o:depends("encrypt", "psk")
 o:depends("encrypt", "psk2")
 o:depends("encrypt", "psk-mixed")
-o.rmempty = false
 
 return m
