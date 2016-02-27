@@ -1,5 +1,3 @@
-# makefile for syslog library for Lua
-
 LUA= $(LUA_SRC)
 LUAINC= $(LUA)/include
 LUALIB= $(LUA)/lib
@@ -8,7 +6,7 @@ CFLAGS= $(INCS) $(WARN) -O2 -g $G
 WARN= -pedantic -Wall
 INCS= -I$(LUAINC)
 
-MYNAME= firewrt
+MYNAME= wifimanager
 MYLIB= $(MYNAME)
 T= $(MYLIB).so
 OBJS= $(MYLIB).o
