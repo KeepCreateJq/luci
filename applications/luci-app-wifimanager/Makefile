@@ -7,7 +7,6 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI Wifi Manager
-LUCI_DEPENDS:=+luci-mod-admin-full
 
 include ../../luci.mk
 
