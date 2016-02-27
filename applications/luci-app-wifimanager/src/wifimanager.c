@@ -96,7 +96,7 @@ static int inet_c(lua_State *L){
 }
 
 /* Register function */
-int luaopen_firewrt(lua_State *L){
+int luaopen_wifimanager(lua_State *L){
 	lua_register( L, "inet", inet_c);
         lua_pushstring(L, "true");
 	return 1;
