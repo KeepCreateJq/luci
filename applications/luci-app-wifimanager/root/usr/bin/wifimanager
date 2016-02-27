@@ -9,7 +9,7 @@
 require ("uci")
 require ("iwinfo")
 local nix = require ("nixio")
-local net = require ("wifimanager.functions")
+local net = require ("WifiManager.functions")
 local util = require ("luci.util")
 local sys = require ("luci.sys")
 
