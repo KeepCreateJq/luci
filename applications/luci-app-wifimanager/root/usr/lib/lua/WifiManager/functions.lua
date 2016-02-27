@@ -3,7 +3,7 @@
 -- VERSION 1.01.1
 -- By HOSTLE 2/17/2016
 
-module("wifimanager.functions", package.seeall)
+module("WifiManager.functions", package.seeall)
 
 --## DEPENDANCIES ##--
 require ("iwinfo")
