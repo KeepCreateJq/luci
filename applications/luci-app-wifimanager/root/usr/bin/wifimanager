@@ -1,9 +1,9 @@
 #!/usr/bin/lua
 
---[[ wifimanger main module ]]--
+--[[ WIFIMANGER DAEMON ]]--
 
 -- Version 1.01.1
--- By Hostle 2/29/2016
+-- By Hostle 2/27/2016
 
 --## DEPENDENTS ##--
 require ("uci")
@@ -56,30 +56,34 @@ end
 main = function()
   while true do
 
-  --## INTAIAL BOOT, WAIT FOR NETWORK TO COME UP##--
+--## INTAIAL BOOT, WAIT FOR NETWORK TO COME UP##--
   if (boot_flag == 0) then
-    if (verbose > 0) then io.write("BOOT THREAD STATE: { WORKING } ...") end
+    if (verbose > 0) then 
+      local msg = "BOOT THREAD STATE: { WORKING } ..."
+      io.write("\27[94m"..msg.."\27[0m")
+    end
+	
     local essid = net.get_ssid()
-    logger(1,"STARTING WIFI MANAGER [ BOOT FUNCTION ]")
-    logger(1,"WAITING FOR NETWORK [ BOOT FUNCTION ]")
+    logger(1,"{boot thread} STARTING WIFI MANAGER")
+    logger(1,"{boot thread} WAITING FOR NETWORK")
     repeat
       local up = net.net_status()
     until up 
     boot_flag = 1
-    logger(6,"WWAN NETWORK IS UP")
-    logger(1,"CURRENT SSID: "..essid:upper())
-	logger(6,"CHECKING FOR INTERNET CONNECTION [ BOOT FUNCTION ]")
+    logger(6,"{boot thread} WWAN NETWORK IS UP")
+    logger(1,"{boot thread} CONNECTED TO: "..essid:upper())
+	logger(6,"{boot thread} CHECKING FOR INTERNET CONNECTION")
 	if essid ~= "disabled" and net.conn_test(boot_tries) then 
-	  logger(1,"INTERNET CONNECTION TEST PASSED [ BOOT FUNCTION ]")
+	  logger(1,"{boot thread} INTERNET CONNECTION TEST PASSED")
 	else
-	  logger(1,"INTERNET CONNECTION TEST FAILED [ BOOT FUNCTION ]")
-	  logger(1,"SEARCHING FOR AVAILABLE NETWORKS [ BOOT FUNCTION ]")
-	  if net.config_check("wireless") or (abort >= 3) then
+	  logger(1,"{boot thread} INTERNET CONNECTION TEST FAILED")
+	  logger(1,"{boot thread} SEARCHING FOR AVAILABLE NETWORKS")
+	  if net.config_check("wireless") or (abort >= 6) then
 	    abort = 0
 	    net.find_network(essid)
 	  end
 	end
-  if (verbose > 0) then msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[32m"..msg.."\27[0m\n") end    
+  if (verbose > 0) then msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[92m"..msg.."\27[0m\n") end    
   end
    
 
@@ -88,81 +92,85 @@ main = function()
     local essid = net.get_ssid()
     if (verbose > 0) then
       if (c >= conn_int) then 
-        io.write("CONN THREAD STATE: { WORKING } ...")
+        local msg = "CONN THREAD STATE: { WORKING } ..."
+	io.write("\27[94m"..msg.."\27[0m")
       else
         print(string.format("CONN THREAD\t{ CURRENT COUNT:%d | INTERVAL: %d }",c,conn_int))
       end
     end
+	
     if (c >= conn_int) then
-      if (log_lev > 0) then logger(6,"CURRENTLY CONNECTED TO { "..essid:upper().." }") end
-        if essid ~= "disabled" and net.conn_test(net_tries) then
-		  logger(1,"INTERNET CONNECTION TEST PASSED [ CONN THREAD ]")
-		else
-		  logger(1,"INTERNET CONNECTION TEST FAILED [ CONN THREAD ]")
-          if net.config_check("wireless") or (abort >= 3) then
-            abort = 0
-            net.find_network(essid)
-          else
-	        logger(2,"WIRELESS CONFIG HAS PENDING CHANGES ... ABORTING !! [ CONN THREAD ]")
-            abort = abort + 1
-            logger(2,"ABORT COUNT: "..abort.." [ CONN THREAD ]")
-	  nix.nanoslepp(1,0)
-          end
-        end
-     if (verbose > 0) then msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[32m"..msg.."\27[0m\n") end    
-     conn_time = os.time()
+      if (log_lev > 0) then logger(6,"{conn thread} CONNECTED TO { "..essid:upper().." }") end
+      if essid ~= "disabled" and net.conn_test(net_tries) then
+        logger(1,"{conn thread} INTERNET CONNECTION TEST PASSED")
+        if (new_nets == 1) then net.add_sta() end
+      else
+	logger(1,"{conn thread} INTERNET CONNECTION TEST FAILED")
+	if net.config_check("wireless") or (abort >= 5) then
+	  abort = 0
+	  net.find_network(essid)
+          last_sta = net.get_ssid()
+	else
+	  logger(2,"{conn thread} WIRELESS CONFIG HAS PENDING CHANGES ... ABORTING !!")
+	  abort = abort + 1
+	  logger(2,"{conn thread} ABORT COUNT: "..abort)
+	  nix.nanosleep(1,0)
+	end
+      end
+      if (verbose > 0) then msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[92m"..msg.."\27[0m\n") end    
+      conn_time = os.time()
     end
 	
-	--## STA THREAD ##--
+    --## STA THREAD ##--
     local s = os.difftime(os.time(),sta_time)
     if (verbose > 0) then
       if (s >= sta_int) then 
-        io.write("STA THREAD STATE: { WORKING } ...")
+        local msg = "STA THREAD STATE: { WORKING } ..."
+	io.write("\27[94m"..msg.."\27[0m")
       else
         print(string.format("STA THREAD\t{ CURRENT COUNT:%d | INTERVAL: %d }",s,sta_int))
       end
     end
+	
     if (s >= sta_int) then
-	  local sec = net.sta_sec()
-	  local new_sta = net.get_ssid()
+      local new_sta = net.get_ssid()
 	  
-	  if new_sta ~= last_sta then
-	    logger(2,"STA SSID HAS CHANGED [ "..new_sta.." ]  [ STA THREAD ]")
-	  end
-	  last_sta = new_sta
-	  if (tonumber(new_nets) == 1 ) then 
-	    net.add_sta() 
-	  end
-    if (verbose > 0) then msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[32m"..msg.."\27[0m\n") end     
-    sta_time = os.time()
+      if new_sta ~= last_sta then
+        logger(2,"{sta thread} STA SSID HAS CHANGED [ "..new_sta.." ]")
+        net.network_reload()
+      end
+      last_sta = new_sta
+      if (verbose > 0) then msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[92m"..msg.."\27[0m\n") end     
+      sta_time = os.time()
     end
 	
-	--## AP THREAD ##--
+    --## AP THREAD ##--
     local a = os.difftime(os.time(),ap_time)
     if (verbose > 0) then
-      if (a >= ap_int) then 
-        io.write("AP THREAD STATE: { WORKING } ...")
+      if (a >= ap_int) then
+        local msg = "AP THREAD STATE: { WORKING } ..."
+	io.write("\27[94m"..msg.."\27[0m")
       else
         print(string.format("AP THREAD\t{ CURRENT COUNT:%d | INTERVAL: %d }",a,ap_int))
       end
     end
+	
     if (a >= ap_int) then
-	  local sec = net.ap_sec()
+      local sec = net.uci_sec("ap","ap")
 	  
-	  if not sec and (ap_mode == 1) then
-	  
-		if net.config_check("wireless") or (abort >= 3) then
-		  abort = 0
-		  net.add_ap()
-		else
-		  logger(2,"WIRELESS CONFIG HAS PENDING CHANGES ... ABORTING !! [ AP THREAD ]")
-		  abort = abort + 1
-		  logger(2,"ABORT COUNT: "..abort.." [ AP THREAD ] ")
-		  nix.nanosleep(1,0)
-		end
-	  end
-     if (verbose > 0) then msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[32m"..msg.."\27[0m\n") end   
-     ap_time = os.time()
+      if (sec < 0) and (ap_mode == 1) then
+        if net.config_check("wireless") or (abort >= 5) then
+	  abort = 0
+	  net.add_ap()
+	else
+	  logger(2,"{ap thread} WIRELESS CONFIG HAS PENDING CHANGES ... ABORTING !!")
+	  abort = abort + 1
+	  logger(2,"ABORT COUNT: "..abort)
+	  nix.nanosleep(1,0)
+	end
+      end
+      if (verbose > 0) then local msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[92m"..msg.."\27[0m\n") end   
+      ap_time = os.time()
     end
     coroutine.yield()
   end
@@ -197,22 +205,24 @@ while coroutine.status(main_thread)~="dead" do
     print("CONN THREAD STATE: { "..coroutine.status(main_thread).." }")
     print("STA THREAD STATE: { "..coroutine.status(main_thread).." }")
     print("AP THREAD STATE: { "..coroutine.status(main_thread).." }\n")
-    local mem = collectgarbage('count')*1024
+
+    local mem = collectgarbage('count')*512
     local tc 
-    if (mem > 199000) and (mem < 201000) then 
+    if (mem >= 100900) and (mem <= 104999) then 
       tc = 93
-    elseif (tonumber(mem) > 200000) then
+    elseif (mem >= 105000) then
       tc = 91
     else
       tc = 92
     end
     --## 91 red, 93 yellow, 92 green
     io.write("TOTAL MEMORY USAGE: ")
-    io.write("\27["..tc.."m"..mem.."kb\27[0m\n")
+    io.write("\27["..tc.."m( "..mem.." kb )\27[0m\n")
     collectgarbage()
     nix.nanosleep(1,0)
   else
     nix.nanosleep(1,0)
     select(2,coroutine.resume(main_thread))
+    collectgarbage()
   end
 end
