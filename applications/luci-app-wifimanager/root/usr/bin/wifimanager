@@ -3,7 +3,7 @@
 --[[ WIFIMANGER DAEMON ]]--
 
 -- Version 1.01.1
--- By Hostle 2/27/2016
+-- By Hostle 2/29/2016
 
 --## DEPENDENTS ##--
 require ("uci")
