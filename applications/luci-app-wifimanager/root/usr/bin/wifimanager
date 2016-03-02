@@ -78,7 +78,7 @@ main = function()
 	else
 	  logger(1,"{boot thread} INTERNET CONNECTION TEST FAILED")
 	  logger(1,"{boot thread} SEARCHING FOR AVAILABLE NETWORKS")
-	  if net.config_check("wireless") or (abort >= 6) then
+	  if net.config_check("wireless") then
 	    abort = 0
 	    net.find_network(essid)
 	  end
@@ -106,7 +106,7 @@ main = function()
         if (new_nets == 1) then net.add_sta() end
       else
 	logger(1,"{conn thread} INTERNET CONNECTION TEST FAILED")
-	if net.config_check("wireless") or (abort >= 5) then
+	if net.config_check("wireless") then
 	  abort = 0
 	  net.find_network(essid)
           last_sta = net.get_ssid()
@@ -159,7 +159,7 @@ main = function()
       local sec = net.uci_sec("ap","ap")
 	  
       if (sec < 0) and (ap_mode == 1) then
-        if net.config_check("wireless") or (abort >= 5) then
+        if net.config_check("wireless") then
 	  abort = 0
 	  net.add_ap()
 	else
