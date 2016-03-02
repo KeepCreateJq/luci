@@ -7,15 +7,10 @@ config set 'conn'
 	option new_nets '0'
 	option randMac '0'
 
-config set 'ap'
+config ap
 	option ap_mode '0'
 
 config wifi
 	option ssid 'Dummy1'
 	option encrypt 'psk'
 	option key 'password1'
-
-config wifi
-	option ssid 'Dummy2'
-	option encrypt 'psk2'
-	option key 'password2'
