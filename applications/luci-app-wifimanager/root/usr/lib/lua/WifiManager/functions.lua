@@ -1,7 +1,7 @@
 --[[ WIFIMANGER FUNCTIONS MODULE ]]--
 
 -- VERSION 1.01.1
--- By HOSTLE 2/29/2016
+-- By HOSTLE 2/27/2016
 
 module("WifiManager.functions", package.seeall)
 
@@ -22,7 +22,7 @@ local ping_addr = uci:get("wifimanager", "conn", "PingLocation")
 local boot_tries = tonumber(uci:get("wifimanager", "conn", "boot_tries"))
 local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
 local new_nets = tonumber(uci:get("wifimanager", "conn", "new_nets"))
-local ap_mode = tonumber(uci:get("wifimanager", "ap", "ap_mode"))
+local ap_mode = tonumber(uci:get("wifimanager.@ap[0].ap_mode"))
 
 ---------------------------------------[[ LOGGING ]]-------------------------------------
 
@@ -424,9 +424,9 @@ function add_ap()
   local sec = uci_sec("ap","ap") 
   if (sec >= 0) then return end
   local uci = uci.cursor()
-  local ap_ssid = uci:get("wifimanager", "ap", "ap_ssid")
-  local ap_enc = uci:get("wifimanager", "ap", "ap_encrypt")
-  local ap_key = uci:get("wifimanager", "ap", "ap_key")
+  local ap_ssid = uci:get("wifimanager.@ap[0].ap_ssid")
+  local ap_enc = uci:get("wifimanager.@ap[0].ap_encrypt")
+  local ap_key = uci:get("wifimanager.@ap[0].ap_key")
   local dev = get_dev()
   local wsta = wifi_sta()
 
