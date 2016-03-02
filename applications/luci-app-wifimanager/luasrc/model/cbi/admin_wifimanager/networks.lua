@@ -4,8 +4,6 @@ $Id: wifimanager.lua 2/17/2016
 $ hostle@fire-wrt.com
 ]]--
 
-local sys = require ("luci.sys")
-
 local m, s, t, o
 
 m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can configure your Networks"))
@@ -14,18 +12,16 @@ m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can config
 -- AP
 --
 
-t = m:section(NamedSection, "ap", "set", translate("AP Network"))
+t = m:section(TypedSection, "ap", translate("AP Network"))
 t.anonymous = true
 
 t:tab("apn",  translate("Access Point"))
 
-o = t:taboption("apn", Flag, "ap_mode", translate("Enable AP"))
-o.rmempty = false
+t.template = "cbi/tblsection"
 
 o = t:taboption("apn", Value, "ap_ssid", translate("SSID"))
 o.default = "Dummy"
 o.rmempty = false
-
 
 o = t:taboption("apn", ListValue, "ap_encrypt", translate("Encyption Type"))
 o.default = "none"
@@ -45,6 +41,9 @@ o:depends("ap_encrypt", "psk")
 o:depends("ap_encrypt", "psk2")
 o:depends("ap_encrypt", "psk-mixed")
 
+o = t:taboption("apn", Flag, "ap_mode", translate("Enable AP"))
+o.rmempty = false
+
 --
 -- Trusted Networks
 --
@@ -58,6 +57,8 @@ s:tab("networks",  translate("Network"))
 function s.parse(self, ...)
 	TypedSection.parse(self, ...)
 end
+
+s.template = "cbi/tblsection"
 
 o = s:taboption("networks", Value, "ssid", translate("SSID"))
 o.default = "Dummy"
