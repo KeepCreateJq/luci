@@ -1,7 +1,7 @@
 --[[ WIFIMANGER FUNCTIONS MODULE ]]--
 
--- VERSION 1.01.1
--- By HOSTLE 2/27/2016
+-- VERSION 1.01.2
+-- By HOSTLE 3/02/2016
 
 module("WifiManager.functions", package.seeall)
 
@@ -410,7 +410,7 @@ function find_network(ssid)
    end      
   end
   logger(2,"{find_network func} NO TRUSTED NETWORKS FOUND !!")
-  if dis ~= "1" then
+  if (sec >= 0) and dis ~= "1" then
     logger(1,"{find_network func} STA DISABLED UNTIL A USABLE NETWORK IS FOUND")
     uci:set("wireless.@wifi-iface["..sec.."].disabled=1")
     uci:commit("wireless")
