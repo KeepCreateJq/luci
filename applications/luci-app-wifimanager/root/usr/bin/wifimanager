@@ -2,8 +2,8 @@
 
 --[[ WIFIMANGER DAEMON ]]--
 
--- Version 1.01.2
--- By Hostle 3/02/2016
+-- Version 1.01.1
+-- By Hostle 2/27/2016
 
 --## DEPENDENTS ##--
 require ("uci")
@@ -14,7 +14,7 @@ local util = require ("luci.util")
 local sys = require ("luci.sys")
 
 --## VERSION INFO ##--
-local version = "1.01.2"
+local version = "1.01.1"
 
 --## LOCAL FLAGS ##--
 local verbose = 0
@@ -78,7 +78,7 @@ main = function()
 	else
 	  logger(1,"{boot thread} INTERNET CONNECTION TEST FAILED")
 	  logger(1,"{boot thread} SEARCHING FOR AVAILABLE NETWORKS")
-	  if net.config_check("wireless") then
+	  if net.config_check("wireless") or (abort >= 6) then
 	    abort = 0
 	    net.find_network(essid)
 	  end
@@ -100,13 +100,14 @@ main = function()
     end
 	
     if (c >= conn_int) then
+      local new_nets = net.get_newnets()
       if (log_lev > 0) then logger(6,"{conn thread} CONNECTED TO { "..essid:upper().." }") end
       if essid ~= "disabled" and net.conn_test(net_tries) then
         logger(1,"{conn thread} INTERNET CONNECTION TEST PASSED")
         if (new_nets == 1) then net.add_sta() end
       else
 	logger(1,"{conn thread} INTERNET CONNECTION TEST FAILED")
-	if net.config_check("wireless") then
+	if net.config_check("wireless") or (abort >= 5) then
 	  abort = 0
 	  net.find_network(essid)
           last_sta = net.get_ssid()
@@ -157,9 +158,9 @@ main = function()
 	
     if (a >= ap_int) then
       local sec = net.uci_sec("ap","ap")
-	  
+      local ap_mode = net.get_apmode()
       if (sec < 0) and (ap_mode == 1) then
-        if net.config_check("wireless") then
+        if net.config_check("wireless") or (abort >= 5) then
 	  abort = 0
 	  net.add_ap()
 	else
