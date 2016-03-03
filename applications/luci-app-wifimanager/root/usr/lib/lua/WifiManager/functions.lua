@@ -1,6 +1,6 @@
 --[[ WIFIMANGER FUNCTIONS MODULE ]]--
 
--- VERSION 1.01.2
+-- VERSION 1.01.3
 -- By HOSTLE 3/02/2016
 
 module("WifiManager.functions", package.seeall)
@@ -23,7 +23,6 @@ local boot_tries = tonumber(uci:get("wifimanager", "conn", "boot_tries"))
 local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
 local new_nets = tonumber(uci:get("wifimanager", "conn", "new_nets"))
 local ap_mode = tonumber(uci:get("wifimanager.@ap[0].ap_mode"))
-
 ---------------------------------------[[ LOGGING ]]-------------------------------------
 
 --## LOG LEVEL ##--
@@ -133,6 +132,18 @@ function uci_sec(conf,val)
  end
 end
 
+function get_apmode()
+ local uci = uci.cursor()
+ local ap_mode = tonumber(uci:get("wifimanager.@ap[0].ap_mode"))
+ return ap_mode or 0
+end
+
+
+function get_newnets()
+ local uci = uci.cursor()
+ local new_nets = tonumber(uci:get("wifimanager", "conn", "new_nets"))
+ return new_nets or 0
+end
 
 --## GET THE SSID OF THE CURRENT NETWORK ##--
 function get_ssid()
@@ -151,14 +162,12 @@ end
 
 --## TEST IF NETWORK IS UP ##-- 
 function net_status()
-  if (log_lev >= 2) then logger(6,"{net_status func} BEGINNING DEVICE STATUS TEST") end
-  if (log_lev >= 2) then logger(7,"{net_status func} DEVICE: { WWAN }") end
+  if (log_lev > 2) then logger(6,"{net_status func} BEGINNING DEVICE STATUS TEST") end
+  if (log_lev > 2) then logger(7,"{net_status func} DEVICE: { WWAN }") end
 
   local conn = ubus.connect(nil,600)
   if not conn then
     logger(1,"{net_status func} Failed to connect to ubusd")
-     sane_config()
-     nix.nanosleep(5,0)
     return false
   end
 
@@ -167,9 +176,6 @@ function net_status()
   if net and net.up then
     if (debug > 1) then logger(6,"{net_status func} DEVICE STATUS TEST RESULT: { PASSED }") end
     return net.up
-  else
-    sane_config()
-    nix.nanosleep(5,0)
   end
  return false
 end
@@ -292,53 +298,6 @@ local function get_dev()
   end
  return "radio0"
 end
-
---## ADD A DUMMY STA TO WIRELESS CONFIG ##
-local function add_dummy(net_type) 
-  if net_type == "sta" then
-    uci:add("wireless", "wifi-iface")
-    uci:set("wireless.@wifi-iface[-1]=wifi-iface")
-    uci:set("wireless.@wifi-iface[-1].network=wwan")
-    uci:set("wireless.@wifi-iface[-1].ssid=OpenWrt")
-    uci:set("wireless.@wifi-iface[-1].encryption=psk")
-    uci:set("wireless.@wifi-iface[-1].device="..get_dev())
-    uci:set("wireless.@wifi-iface[-1].mode=sta")
-    uci:set("wireless.@wifi-iface[-1].bssid="..randmac())
-    uci:set("wireless.@wifi-iface[-1].key=abcd12345678")
-    uci:set("wireless.@wifi-iface[-1].disabled=1")
-    uci:commit("wireless")
-  end
-end
-
---## CHECK IF THE CONFIGS ARE SANE ##--
-function sane_config()
-  local uci = uci.cursor()
-  logger(1,"{sane_config func} CHECK IF CONFIGS ARE SANE")
-  local wwan = uci:get("network.wwan")
-  local sta = uci_sec("sta","sta")
-  local hc = 0
-  if not wwan then
-    logger(1,"{sane_config func} NO WWAN NETWORK FOUND")
-    uci:set("network.wwan=interface")
-    uci:set("network.wwan.proto=dhcp")
-    uci:commit("network")
-    hc = 1
-    logger(1,"{sane_config func} WWAN NETWORK ADDED SUCCESSFULLY")
-  end
-  if (sta < 0) then
-    logger(1,"{sane_config func} NO STA NETWORK FOUND")
-    add_dummy("sta")
-    hc = 1
-    logger(1,"{sane_config func} STA NETWORK ADDED SUCCESSFULLY")
-  end
-  if (hc > 0) then 
-    network_reload()
-    nix.nanosleep(3,0)
-    sys.exec("ifup wwan")
-    nix.nanosleep(3,0)
-  end
- return true
-end
   
 --## ADD THE NETWORK TO THE WIRELESS CONFIG ENABLE IT ##--
 local function set_client(ssid,enc,key,bssid,chn)
@@ -370,6 +329,7 @@ end
 --## PREPARE A NETWORK ENTRY TO BE ADDED ##--
 local function prep_client(ssid,bssid,chn)
   local uci = uci.cursor()
+  local x = 1
   local sec = uci_sec("wmgr", ssid)
   if (log_lev > 2) then logger(6,"{prep_client func} PREPARING NEW CLIENT [ "..ssid.." ]") end
   local enc = uci:get("wifimanager.@wifi["..sec.."].encrypt")
@@ -379,7 +339,8 @@ local function prep_client(ssid,bssid,chn)
     network_reload()
     repeat
         local up = net_status()
-    until up
+        x = x + 1
+    until up or x == 500
     if conn_test(net_tries) then
       return true 
     end
@@ -392,9 +353,10 @@ function find_network(ssid)
   local uci = uci.cursor()
   local sec = uci_sec("sta","sta")
   local dis = uci:get("wireless.@wifi-iface["..sec.."].disabled")
-  local ssta = net_scan("wlan0")
+  local ssta = net_scan("wlan0") or {}
   local csta = config_sta()
-
+  nix.nanosleep(0,5)
+  if (sec < 0) then return false end
   for i,v in ipairs(ssta) do
    if not ssid or v[1] ~= ssid then
     if util.contains(csta, v[1]) then
@@ -444,7 +406,7 @@ function add_ap()
     uci:set("wireless.@wifi-iface[-1].network=lan")
     uci:commit("wireless")
     network_reload()
-    nix.nanosleep(1,0)
+    nix.nanosleep(3,0)
     logger(1,"{add_ap func} AP [ "..ap_ssid.." ] CONFIGURED SUCCESSFULLY")
     return true
   end
