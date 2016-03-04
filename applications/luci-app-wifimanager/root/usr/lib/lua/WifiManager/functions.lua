@@ -1,7 +1,7 @@
 --[[ WIFIMANGER FUNCTIONS MODULE ]]--
 
--- VERSION 1.01.3
--- By HOSTLE 3/02/2016
+-- VERSION 1.01.4
+-- By HOSTLE 3/03/2016
 
 module("WifiManager.functions", package.seeall)
 
@@ -12,11 +12,9 @@ local nix = require ("nixio")
 local util = require ("luci.util")
 local sys = require ("luci.sys")
 
---## LOCAL BUFFERS ##--
+--## LOCAL VARS ##--
 local essid
 local debug = 0
-
---## LOCAL VARS ##--
 local uci = uci.cursor()
 local ping_addr = uci:get("wifimanager", "conn", "PingLocation")
 local boot_tries = tonumber(uci:get("wifimanager", "conn", "boot_tries"))
@@ -38,11 +36,6 @@ end
 
 
 ---------------------------------------[[ UTILITIES ]]-----------------------------------
-
---## PRINTF FUNCTION ##--
-local function printf(fmt, ...)
-	print(string.format(fmt, ...))
-end
 
 --## CHECK IF VAL IS A STRING ##--
 local function str(x)
@@ -229,11 +222,11 @@ end
 
 --## SCAN AVAILABLE NETWORKS AND LOAD INTO SORTED TABLE, SSID IS KEY BSSID IS VALUE##--
 function net_scan(dev)
-  if (debug > 2) then logger(7,"{net_scan func} NETWORK SCAN { "..dev.." }") end
+  logger(6,"{net_scan func} NETWORK SCAN { "..dev.." }")
   local api = iwinfo.type(dev)
   local ssta = {}
   if not api then
-    print("{net_scan func} No such wireless device: " .. dev)
+    logger(1,"{net_scan func} No such wireless device: " .. dev)
     return ssta
   end
   local iw = iwinfo[api]
@@ -263,11 +256,12 @@ function net_scan(dev)
     --print(i,i["signal"])
   end
   for k,v in spairs(tbuf, function(t,a,b) return t[b] > t[a] end) do
-    --print("--",k,v)
-    ssta[x]={ k, conns[k]["bssid"], conns[k]["channel"] }
+    logger(1,"SSID: "..k.." SIGNAL: [ "..v:gsub("-","").." dbm ]")
+     --print(string.format("SSID: %s\nSIGNAL: %s dbm\n",k,v))
+    ssta[x]={ k, conns[k]["bssid"], conns[k]["channel"], conns[k]["signal"] }
     x = x + 1
   end
-  if (debug > 2) then logger(7,"{net_scan func} NETWORK SCAN COMPLETED") end
+  logger(6,"{net_scan func} NETWORK SCAN COMPLETED")
  return ssta
 end
 ---------------------------------------[[ END NETWORK ]]---------------------------------
@@ -360,7 +354,7 @@ function find_network(ssid)
   for i,v in ipairs(ssta) do
    if not ssid or v[1] ~= ssid then
     if util.contains(csta, v[1]) then
-      logger(1,"{find_network func} FOUND A MATCH "..v[1])
+      logger(1,"{find_network func} FOUND A MATCH [ SSID: "..v[1].." SIGNAL: "..v[4]:gsub("-",""))
       if prep_client(v[1],v[2],v[3]) then
         logger(1,"{find_network func} NETWORK: [ "..v[1].." ] HAS BEEN CONFIGURED SUCCESFULLY")
         return true 
