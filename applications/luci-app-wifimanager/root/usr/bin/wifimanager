@@ -2,7 +2,7 @@
 
 --[[ WIFIMANGER DAEMON ]]--
 
--- Version 1.01.4
+-- Version 1.01.5
 -- By Hostle 3/03/2016
 
 --## DEPENDENTS ##--
@@ -14,7 +14,7 @@ local util = require ("luci.util")
 local sys = require ("luci.sys")
 
 --## VERSION INFO ##--
-local version = "1.01.4"
+local version = "1.01.5"
 
 --## LOCAL FLAGS ##--
 local verbose = 0
@@ -28,7 +28,7 @@ local boot_tries = tonumber(uci:get("wifimanager", "conn", "boot_tries"))
 local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
 local new_nets = tonumber(uci:get("wifimanager", "conn", "new_nets"))
 local log_lev = tonumber(uci:get("wifimanager", "conn", "log_lev"))
-local ap_mode = tonumber(uci:get("wifimanager.@ap[0].ap_mode"))
+local ap_mode = tonumber(uci:get("wifimanager", "conn", "ap_mode"))
 local last_sta = net.get_ssid()
 local new_sta
 
@@ -73,15 +73,19 @@ main = function()
     logger(6,"{boot thread} WWAN NETWORK IS UP")
     logger(1,"{boot thread} CONNECTED TO: "..essid:upper())
 	logger(6,"{boot thread} CHECKING FOR INTERNET CONNECTION")
-	if essid ~= "disabled" and net.conn_test(boot_tries) then 
+	if essid ~= "disabled" and  essid ~= "NO STA IS CONFIGURED" and net.conn_test(boot_tries) then 
 	  logger(1,"{boot thread} INTERNET CONNECTION TEST PASSED")
 	else
-	  logger(1,"{boot thread} INTERNET CONNECTION TEST FAILED")
-	  logger(1,"{boot thread} SEARCHING FOR AVAILABLE NETWORKS")
-	  if net.config_check("wireless") or (abort >= 6) then
-	    abort = 0
-	    net.find_network(essid)
-	  end
+          if essid ~= "NO STA IS CONFIGURED" then
+	    logger(1,"{boot thread} INTERNET CONNECTION TEST FAILED")
+	    logger(1,"{boot thread} SEARCHING FOR AVAILABLE NETWORKS")
+	    if net.config_check("wireless") or (abort >= 6) then
+	      abort = 0
+	      net.find_network(essid)
+	    end
+          else
+            logger(2,"{boot thread} NO STA IS CONFIGURED ... ABORTING NETWORK TESTS !!")
+          end
 	end
   if (verbose > 0) then msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[92m"..msg.."\27[0m\n") end    
   end
@@ -102,21 +106,25 @@ main = function()
     if (c >= conn_int) then
       local new_nets = net.get_newnets()
       if (log_lev > 0) then logger(6,"{conn thread} CONNECTED TO { "..essid:upper().." }") end
-      if essid ~= "disabled" and net.conn_test(net_tries) then
+      if essid ~= "disabled" and  essid ~= "NO STA IS CONFIGURED" and net.conn_test(net_tries) then
         logger(1,"{conn thread} INTERNET CONNECTION TEST PASSED")
-        if (new_nets == 1) then net.add_sta() end
+        if (new_nets == 1) and net.config_check("wifimanager") then net.add_sta() end
       else
-	logger(1,"{conn thread} INTERNET CONNECTION TEST FAILED")
-	if net.config_check("wireless") or (abort >= 5) then
-	  abort = 0
-	  net.find_network(essid)
-          last_sta = net.get_ssid()
-	else
-	  logger(2,"{conn thread} WIRELESS CONFIG HAS PENDING CHANGES ... ABORTING !!")
-	  abort = abort + 1
-	  logger(2,"{conn thread} ABORT COUNT: "..abort)
-	  nix.nanosleep(1,0)
-	end
+        if essid ~= "NO STA IS CONFIGURED" then
+	  logger(1,"{conn thread} INTERNET CONNECTION TEST FAILED")
+	  if net.config_check("wireless") or (abort >= 5) then
+	    abort = 0
+	    net.find_network(essid)
+            last_sta = net.get_ssid()
+	  else
+	    logger(2,"{conn thread} WIRELESS CONFIG HAS PENDING CHANGES ... ABORTING !!")
+	    abort = abort + 1
+	    logger(2,"{conn thread} ABORT COUNT: "..abort)
+	    nix.nanosleep(1,0)
+	  end
+        else
+          logger(2,"{conn thread} NO STA IS CONFIGURED ... ABORTING NETWORK TESTS !!")
+        end
       end
       if (verbose > 0) then msg =" ALL TASK FINISHED SUCCESSFULLY" io.write("\27[92m"..msg.."\27[0m\n") end    
       conn_time = os.time()
