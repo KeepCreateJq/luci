@@ -34,7 +34,7 @@ o:value("psk2", "WPA-PSK2")
 o:value("psk-mixed", "WPA-PSK/WPA2-PSK Mixed Mode")
 
 o = t:taboption("apn", Value, "ap_key", translate("Password"))
-o.rmempty = false
+o.rmempty = true
 o:depends("ap_encrypt", "wep-open")
 o:depends("ap_encrypt", "wep-shared")
 o:depends("ap_encrypt", "psk")
@@ -75,7 +75,7 @@ o:value("psk2", "WPA-PSK2")
 o:value("psk-mixed", "WPA-PSK/WPA2-PSK Mixed Mode")
 
 o = s:taboption("networks", Value, "key", translate("Password"))
-o.rmempty = false
+o.rmempty = true
 o:depends("encrypt", "wep-open")
 o:depends("encrypt", "wep-shared")
 o:depends("encrypt", "psk")
