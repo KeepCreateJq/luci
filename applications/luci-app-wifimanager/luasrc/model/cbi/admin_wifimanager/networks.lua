@@ -41,9 +41,6 @@ o:depends("ap_encrypt", "psk")
 o:depends("ap_encrypt", "psk2")
 o:depends("ap_encrypt", "psk-mixed")
 
-o = t:taboption("apn", Flag, "ap_mode", translate("Enable AP"))
-o.rmempty = false
-
 --
 -- Trusted Networks
 --
