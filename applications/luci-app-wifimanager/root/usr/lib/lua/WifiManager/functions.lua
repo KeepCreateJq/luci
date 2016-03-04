@@ -1,6 +1,6 @@
 --[[ WIFIMANGER FUNCTIONS MODULE ]]--
 
--- VERSION 1.01.4
+-- VERSION 1.01.5
 -- By HOSTLE 3/03/2016
 
 module("WifiManager.functions", package.seeall)
@@ -20,7 +20,7 @@ local ping_addr = uci:get("wifimanager", "conn", "PingLocation")
 local boot_tries = tonumber(uci:get("wifimanager", "conn", "boot_tries"))
 local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
 local new_nets = tonumber(uci:get("wifimanager", "conn", "new_nets"))
-local ap_mode = tonumber(uci:get("wifimanager.@ap[0].ap_mode"))
+local ap_mode = tonumber(uci:get("wifimanager", "conn", "ap_mode"))
 ---------------------------------------[[ LOGGING ]]-------------------------------------
 
 --## LOG LEVEL ##--
@@ -127,7 +127,7 @@ end
 
 function get_apmode()
  local uci = uci.cursor()
- local ap_mode = tonumber(uci:get("wifimanager.@ap[0].ap_mode"))
+ local ap_mode = tonumber(uci:get("wifimanager", "conn", "ap_mode"))
  return ap_mode or 0
 end
 
@@ -141,7 +141,7 @@ end
 --## GET THE SSID OF THE CURRENT NETWORK ##--
 function get_ssid()
  local sec = uci_sec("sta","sta")
- if (sec < 0) then return "disabled" end
+ if (sec < 0) then return "NO STA IS CONFIGURED" end
  local uci = uci.cursor()
  local dis = uci:get("wireless.@wifi-iface["..sec.."].disabled")
  local ssid = uci:get("wireless.@wifi-iface["..sec.."].ssid")
@@ -203,7 +203,7 @@ function conn_test(int)
       nix.nanosleep(1,8)
       if (i >= int) then return false end
     else
-      if (log_lev > 2) then logger(7,"NETWORK CONNECTION TEST COMPLETED SUCCESSFULY ON ATTEMPT: "..i) end
+      if (log_lev > 2) then logger(7,"NETWORK CONNECTION TEST COMPLETED SUCCESSFULLY ON ATTEMPT: "..i) end
       if (log_lev > 1) then logger(6,"NETWORK CONNECTION TEST [ "..i.." of "..int.." ] PASSED") end
       break
     end
@@ -226,7 +226,7 @@ function net_scan(dev)
   local api = iwinfo.type(dev)
   local ssta = {}
   if not api then
-    logger(1,"{net_scan func} No such wireless device: " .. dev)
+    logger(1,"{net_scan func} NO SUCH WIRELESS DEVICE: " .. dev)
     return ssta
   end
   local iw = iwinfo[api]
@@ -349,14 +349,14 @@ function find_network(ssid)
   local dis = uci:get("wireless.@wifi-iface["..sec.."].disabled")
   local ssta = net_scan("wlan0") or {}
   local csta = config_sta()
-  nix.nanosleep(0,5)
+  nix.nanosleep(1,0)
   if (sec < 0) then return false end
   for i,v in ipairs(ssta) do
    if not ssid or v[1] ~= ssid then
     if util.contains(csta, v[1]) then
       logger(1,"{find_network func} FOUND A MATCH [ SSID: "..v[1].." SIGNAL: "..v[4]:gsub("-",""))
       if prep_client(v[1],v[2],v[3]) then
-        logger(1,"{find_network func} NETWORK: [ "..v[1].." ] HAS BEEN CONFIGURED SUCCESFULLY")
+        logger(1,"{find_network func} NETWORK: [ "..v[1].." ] HAS BEEN CONFIGURED SUCCESSFULLY")
         return true 
       else
         logger(2,"{find_network func} NETWORK [ "..v[1].." ] FAILED CONECTION TEST !!")
@@ -380,9 +380,9 @@ function add_ap()
   local sec = uci_sec("ap","ap") 
   if (sec >= 0) then return end
   local uci = uci.cursor()
-  local ap_ssid = uci:get("wifimanager.@ap[0].ap_ssid")
-  local ap_enc = uci:get("wifimanager.@ap[0].ap_encrypt")
-  local ap_key = uci:get("wifimanager.@ap[0].ap_key")
+  local ap_ssid = uci:get("wifimanager.@ap[-1].ap_ssid")
+  local ap_enc = uci:get("wifimanager.@ap[-1].ap_encrypt")
+  local ap_key = uci:get("wifimanager.@ap[-1].ap_key")
   local dev = get_dev()
   local wsta = wifi_sta()
 
