@@ -6,7 +6,6 @@ USE_PROCD=1
 start_service() {
         procd_open_instance 
 	procd_set_param command wifimanager -b -a
-	procd_set_param respawn 
         procd_set_param file /etc/config/wifimanager
 	procd_close_instance 
 
