@@ -6,13 +6,14 @@ $ hostle@fire-wrt.com
 
 local m, s, t, o
 
-m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can configure your Networks"))
+m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can configure the Networks to be used by Wifi Manager"))
 
 --
 -- AP
 --
 
-t = m:section(TypedSection, "ap", translate("AP Network"))
+t = m:section(TypedSection, "ap", translate("AP Network"),
+		translate("Enter the default device AP information here"))
 t.anonymous = true
 
 t:tab("apn",  translate("Access Point"))
@@ -35,17 +36,20 @@ o:value("psk-mixed", "WPA-PSK/WPA2-PSK Mixed Mode")
 
 o = t:taboption("apn", Value, "ap_key", translate("Password"))
 o.rmempty = true
+o.password = true
 o:depends("ap_encrypt", "wep-open")
 o:depends("ap_encrypt", "wep-shared")
 o:depends("ap_encrypt", "psk")
 o:depends("ap_encrypt", "psk2")
 o:depends("ap_encrypt", "psk-mixed")
 
+
 --
 -- Trusted Networks
 --
 
-s = m:section(TypedSection, "wifi", translate("Trusted Networks"))
+s = m:section(TypedSection, "wifi", translate("Trusted Networks"),
+		translate("Enter connection data for frequently visited Access Points and HotSpots."))
 s.anonymous = true
 s.addremove = true
 
@@ -73,6 +77,7 @@ o:value("psk-mixed", "WPA-PSK/WPA2-PSK Mixed Mode")
 
 o = s:taboption("networks", Value, "key", translate("Password"))
 o.rmempty = true
+o.password = true
 o:depends("encrypt", "wep-open")
 o:depends("encrypt", "wep-shared")
 o:depends("encrypt", "psk")
