@@ -1,86 +1,97 @@
 --[[
 LuCI - Lua Configuration Interface
-$Id: wifimanager.lua 3/13/2016
+$Id: wifimanager.lua 2/17/2016
 $ hostle@fire-wrt.com
 ]]--
 
-local m, s, t, o
+require ("uci")
+local sys = require ("luci.sys")
+local uci = uci.cursor()
+local nets = {}
+local i = 1 
+local version = sys.exec("wifimanager -s")
 
-m = Map("wifimanager", translate("Wifi Manager"), translate("Here you can configure the Networks to be used by Wifi Manager"))
+uci:foreach("wifimanager", "wifi", function(s) nets[i]=s.ssid i = i + 1 end)
+local m, s, o
 
---
--- AP
---
+m = Map("wifimanager", translate("Wifi Manager "..version), translate("Here you can configure your Wifi Manager Settings"))
 
-t = m:section(TypedSection, "ap", translate("AP Network"),
-		translate("Enter the default device AP information here"))
-t.anonymous = true
-
-t:tab("apn",  translate("Access Point"))
-
-t.template = "cbi/tblsection"
-
-o = t:taboption("apn", Value, "ap_ssid", translate("SSID"))
-o.default = "Dummy"
-o.rmempty = false
-
-o = t:taboption("apn", ListValue, "ap_encrypt", translate("Encyption Type"))
-o.default = "none"
-o.rmempty = false
-o:value("none", "No Encryption")
-o:value("wep-open", "Wep Open")
-o:value("wep-shared", "No Wep Shared")
-o:value("psk", "WPA-PSK")
-o:value("psk2", "WPA-PSK2")
-o:value("psk-mixed", "WPA-PSK/WPA2-PSK Mixed Mode")
-
-o = t:taboption("apn", Value, "ap_key", translate("Password"))
-o.rmempty = true
-o.password = true
-o:depends("ap_encrypt", "wep-open")
-o:depends("ap_encrypt", "wep-shared")
-o:depends("ap_encrypt", "psk")
-o:depends("ap_encrypt", "psk2")
-o:depends("ap_encrypt", "psk-mixed")
-
---
--- Trusted Networks
---
-
-s = m:section(TypedSection, "wifi", translate("Trusted Networks"),
-		translate("Enter connection data for frequently visited Access Points and HotSpots."))
-s.anonymous = true
-s.addremove = true
-
-s:tab("networks",  translate("Network"))
-
-function s.parse(self, ...)
-	TypedSection.parse(self, ...)
+m.on_after_commit = function()
+  sys.exec("reload_config &")
 end
 
-s.template = "cbi/tblsection"
+s = m:section(NamedSection, "conn", "set")
+s.anonymous = true
+s.addremove = false
 
-o = s:taboption("networks", Value, "ssid", translate("SSID"))
-o.default = "Dummy"
+s:tab("gen",  translate("GENERAL SETTINGS"))
+s:tab("wlan",  translate("WLAN SETTINGS"))
+s:tab("wwan",  translate("WWAN SETTINGS"))
+
+
+--
+-- General Settings
+--
+
+o = s:taboption("gen", Value, "ConnCheckTimer", translate("Internet Check Interval"),
+	translate("The frequency at which Wifi Manager looks to validate the current network is functioning or to re-enable it if it is not."))
+o.default = 60
+o.rmempty = false
+for i=10, 60, 10 do
+ o:value(i, i)
+end
+
+o = s:taboption("gen", Value, "net_tries", translate("Internet Check Retries"),
+	translate("The number of times Wifi Manager will ping before it disables the STAtion connection."))
+o.default = 3
+o.rmempty = false
+for i=1, 10 do
+ o:value(i, i)
+end
+
+o = s:taboption("gen", Value, "boot_tries", translate("Boot Internet Retires"),
+	translate("The number of times WifiManager will ping before it disables the STAtion connection at boot time."))
+o.default = 5
+o.rmempty = false
+for i=1, 10 do
+ o:value(i, i)
+end
+
+o = s:taboption("gen", ListValue, "log_lev", translate("Logging"),
+	translate("Set the Level of logging messages"))
+o.default = "OFF"
+o:value("0", "OFF")
+o:value("1", "BASIC")
+o:value("2", "ADVANCED")
+o:value("3", "DEBUGGING")
+
+o = s:taboption("gen", Value, "PingLocation", translate("Ping Adddress"),
+	translate("The web address used by Wifi Manager to test (ping) for a working connection."))
+o.default = "www.google.com"
 o.rmempty = false
 
-o = s:taboption("networks", ListValue, "encrypt", translate("Encyption Type"))
-o.default = "none"
+o = s:taboption("wlan", Flag, "ap_mode", translate("Auto Add AP"),
+	translate("Enables Wifi Manager to automatically replace a missing AP/Master configuration in the wireless config file"))
 o.rmempty = false
-o:value("none", "No Encryption")
-o:value("wep-open", "Wep Open")
-o:value("wep-shared", "No Wep Shared")
-o:value("psk", "WPA-PSK")
-o:value("psk2", "WPA-PSK2")
-o:value("psk-mixed", "WPA-PSK/WPA2-PSK Mixed Mode")
 
-o = s:taboption("networks", Value, "key", translate("Password"))
+o = s:taboption("wwan", Flag, "new_nets", translate("Auto Add Networks"),
+	translate("Enables Wifi Manager to add a Luci-Wifi STAtion configuration to the Wifi Manager config, if not already included."))
+o.rmempty = false
+
+o = s:taboption("wwan", Flag, "randMac", translate("Random Mac Address"),
+	translate("Creates a new random MAC address for the STAtion on each device reboot"))
+o.rmempty = false
+
+o = s:taboption("wwan", Flag, "fnet", translate("Force a Network"),
+	translate("Enable Forcing a Network "))
+o.rmempty = false
+
+o = s:taboption("wwan", ListValue, "force", translate("Forced Network"),
+	translate("Force a specified Network"))
+o:depends("fnet", "1")
 o.rmempty = true
-o.password = true
-o:depends("encrypt", "wep-open")
-o:depends("encrypt", "wep-shared")
-o:depends("encrypt", "psk")
-o:depends("encrypt", "psk2")
-o:depends("encrypt", "psk-mixed")
+for i,v in pairs(nets) do
+ o:value(v, v)
+end
 
 return m
