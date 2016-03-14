@@ -46,11 +46,8 @@ main = function()
     end
     if (net_flag > 0) or (c >= conn_int) or (boot < 1) then
       if (boot < 1) then logger.log(1,"STARTING WIFI MANAGER "..version) mac.check() end
-      if (boot < 1) then 
-        status = func.run("boot") 
-      else
-        status = func.run()
-      end        
+      local status = func.run()
+      net_flag = 0
       boot = 1
       if (verbose > 0) and status ~= false then 
         local msg ="ALL TASK FINISHED SUCCESSFULLY" io.write("\27[92m"..msg.."\27[0m\n")
