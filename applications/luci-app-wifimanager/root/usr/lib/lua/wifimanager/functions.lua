@@ -1,105 +1,71 @@
---[[ WIFI MANAGER RANDOM MAC MODULE ]]--
+--[[ WIFI MANAGER FUNCTIONS MODULE ]]--
 
 --By Hostle 3/7/2016 { hostle@fire-wrt.com }
 
 local M = {}
-
-require ("uci")
+local ap = require ("wifimanager.ap")
+local fnet = require ("wifimanager.force")
 local logger = require ("wifimanager.logger")
-local sys = require ("luci.sys")
-local util = require ("wifimanager.utils")
+local mac = require ("wifimanager.mac")
 local net = require ("wifimanager.net")
-local nix = require ("nixio")
+local sta = require ("wifimanager.sta")
+local util = require ("wifimanager.utils")
 
---## RANDOM MAC ADDRESS ##--
-local randmac = function()
-  local mac = sys.exec("dd if=/dev/urandom bs=1024 count=1 2>/dev/null|md5sum|sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\)\(..\).*$/00:\2:\3:\4:\5:01/'")
-  mac = string.format("%s:%s:%s:%s:%s:%s", mac:sub(0,2),mac:sub(3,4), mac:sub(6,7),mac:sub(9,10),mac:sub(12,13),mac:sub(15,16))
-  mac = mac:upper()
- return tostring(mac)
-end
-M.randmac = randmac
 
---## GET RANDOM MAC STATUS ##--
-local get_mac = function()
+--## BOOT FUNCTION ##--
+-- wait for network to come up
+-- get force network status, if set compare current  ssid angainst the force network
+-- if force network is not set or ssid is aligned with forced network check for random mac
+-- make any changes neccessary and restart the network
+
+local run = function(boot)
   local uci = uci.cursor()
-  local rmac = tonumber(uci:get("wifimanager", "conn", "randMac"))
-  if ( rmac > 0 ) then return true end
- return false
-end
-M.get_mac = get_mac
-
---## CHECK IF RANDOM MAC IS SET ##--
-local check_mac = function()
-  local sec = util.uci_sec("sta","sta")
-  local uci = uci.cursor()
-  local has_mac = uci:get("wireless.@wifi-iface["..sec.."].macaddr")
-  if has_mac then return true end
- return false
-end
-M.check_mac = check_mac
-
---## REMOVE A RANDOM MAC ##--
-local remove_mac = function()
-  local sec = util.uci_sec("sta","sta")
-  local uci = uci.cursor()
-
-  if util.has_pending() then 
-    logger.log(2,"{ remove_mac function } A UCI CONFIG HAS PENDING CHANGES ")
-    util.wait() 
-  end
-  logger.log(6,"{ remove_mac func } REMOVING RANDOM MAC ADDRESS ")
-  uci:delete("wireless.@wifi-iface["..sec.."].macaddr")
-  uci:commit("wireless")
-  nix.nanosleep(1,0)
-  net.network_reload()
-  nix.nanosleep(2,0)
-end
-M.remove_mac = remove_mac
-
---## ADD A RANDOM MAC ##--
-local add_mac = function()
-  local sec = util.uci_sec("sta","sta")
-  local uci = uci.cursor()
-  local mac = randmac()
-
-  if util.has_pending() then 
-    logger.log(2,"{ add_mac function } A UCI CONFIG HAS PENDING CHANGES ")
-    util.wait() 
-  end
-    logger.log(6,"{ add_mac func } ADDING RANDOM MAC ADDRESS [ "..mac.." ]")
-    uci:set("wireless.@wifi-iface["..sec.."].macaddr="..mac)
-    uci:commit("wireless")
-    nix.nanosleep(1,0)
-    net.network_reload()
-    nix.nanosleep(2,0)
-end
-M.add_mac = add_mac
-
---## CHECK RANDOM MAC STATUS ##--
-local check = function()
-   if util.has_pending() then 
-     logger.log(2,"{ mac check function } A UCI CONFIG HAS PENDING CHANGES ")
-     util.wait() 
-   end
-   local rmac = get_mac()
-   local has_mac = check_mac()
-
-   if rmac and not has_mac then
-     if util.has_pending() then util.wait() end
-     add_mac()
-     return true
-   elseif not rmac and has_mac then
-     if util.has_pending() then 
-       logger.log(2,"{ mac check function } A UCI CONFIG HAS PENDING CHANGES ")
-       util.wait() 
-     end
-     remove_mac()
-     return true
+  local ssid = util.get_ssid() or "NO STA CONFIGURED"
+  local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
+  
+  -- if no station switch to offline mode and wait for Luci to configure a station
+  if ssid == "NO STA CONFIGURED" then
+    logger.log(1,"{ boot thread } "..ssid.." ... SWITCHING TO OFFLINE MODE")
+    net.net_status("no_sta")
+    if (logger.log_lev > 1) then logger.log(6,"{ boot thread } WWAN NETWORK IS UP") end
   else
-    return false
+    -- we have a sta so wait for the network to come up --
+    repeat
+      local up = net.net_status()
+    until up
+    if (logger.log_lev > 1) then logger.log(6,"{ boot thread } WWAN NETWORK IS UP") end
+  end
+  -- get current sta --
+  if ssid == "DISABLED" then
+    logger.log(1,"{ boot thread } STA IS DISABLED")
+  else
+    logger.log(1,"{boot thread} CONNECTED TO: "..ssid:upper())
+  end
+  -- if boot then check for force net and random mac
+  if boot then 
+    mac.check()
+    if fnet.check(ssid) then 
+      return 0
+    end
+  end
+  -- test current sta is not disabled, if not then test for inet
+  if ssid ~= "DISABLED" and net.conn_test(net_tries) then
+      if(logger.log_lev == 1) then logger.log(1,"{ boot function } INTERNET CONNECTION TEST PASSED") end
+      return 0
+  else
+    -- current sta is disabled or does not have net, check for a new network
+    if net.find_network(ssid) then
+      return 0
+    else
+    -- check the sta is disabled 
+      if net.sta_disable() then
+        return 0
+      else
+	return 1
+      end
+    end
   end
 end
-M.check = check
+M.run = run
 
 return M
