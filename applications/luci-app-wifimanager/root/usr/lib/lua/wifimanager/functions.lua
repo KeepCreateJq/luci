@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER FUNCTIONS MODULE ]]--
 
---By Hostle 3/13/2016 { hostle@fire-wrt.com }
+--By Hostle 3/7/2016 { hostle@fire-wrt.com }
 
 local M = {}
 local ap = require ("wifimanager.ap")
@@ -11,16 +11,17 @@ local net = require ("wifimanager.net")
 local sta = require ("wifimanager.sta")
 local util = require ("wifimanager.utils")
 
+
 --## BOOT FUNCTION ##--
 -- wait for network to come up
 -- get force network status, if set compare current  ssid angainst the force network
 -- if force network is not set or ssid is aligned with forced network check for random mac
 -- make any changes neccessary and restart the network
 
-local run = function()
+local run = function(boot)
   local uci = uci.cursor()
   local ssid = util.get_ssid() or "NO STA CONFIGURED"
-  local boot_tries = tonumber(uci:get("wifimanager", "conn", "boot_tries"))
+  local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
   
   -- if no station switch to offline mode and wait for Luci to configure a station
   if ssid == "NO STA CONFIGURED" then
@@ -40,13 +41,15 @@ local run = function()
   else
     logger.log(1,"{boot thread} CONNECTED TO: "..ssid:upper())
   end
-  mac.check()
-  -- check for force net, if set try to configure the forced network
-  if fnet.check(ssid) then
-    return 0
-  -- force network not available or not set
+  -- if boot then check for force net and random mac
+  if boot then 
+    mac.check()
+    if fnet.check(ssid) then 
+      return 0
+    end
+  end
   -- test current sta is not disabled, if not then test for inet
-  elseif net.conn_test(boot_tries) then
+  if ssid ~= "DISABLED" and net.conn_test(net_tries) then
       if(logger.log_lev == 1) then logger.log(1,"{ boot function } INTERNET CONNECTION TEST PASSED") end
       return 0
   else
