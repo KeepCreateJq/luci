@@ -52,8 +52,6 @@ local remove_mac = function()
   uci:delete("wireless.@wifi-iface["..sec.."].macaddr")
   uci:commit("wireless")
   nix.nanosleep(1,0)
-  net.network_reload()
-  nix.nanosleep(2,0)
 end
 M.remove_mac = remove_mac
 
@@ -71,8 +69,6 @@ local add_mac = function()
     uci:set("wireless.@wifi-iface["..sec.."].macaddr="..mac)
     uci:commit("wireless")
     nix.nanosleep(1,0)
-    net.network_reload()
-    nix.nanosleep(2,0)
 end
 M.add_mac = add_mac
 
