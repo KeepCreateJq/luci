@@ -1,6 +1,6 @@
- --[[ WIFI MANAGER NET TESTS MODULE ]]--
+ --[[ WIFI MANAGER NETWORK MODULE ]]--
 
---By Hostle 3/13/2016 { hostle@fire-wrt.com }
+--By Hostle 3/7/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
@@ -104,13 +104,14 @@ local net_status = function(no_sta)
       if (logger.log_lev > 1 ) then logger.log(6,"{net_status func} NETWORK STATUS TEST RESULT: { PASSED }") end
       return true
     else
-      if (logger.log_lev > 1 ) then logger.log(6,"{net_status func} WAITING FOR NETWORK ...") end
+      if (logger.log_lev > 1 ) then logger.log(6,"{net_status func} WAITING FOR NETWORK TO COME UP ...") end
       while not net do
         net = net_up()
         nix.nanosleep(2,0)
       end
     end
-    if (logger.log_lev > 1 ) then logger.log(6,"{net_status func} NETWORK STATUS TEST RESULT: { PASSED }") end
+    nix.nanosleep(2,0)
+    if (logger.log_lev >= 2 ) then logger.log(6,"{net_status func} NETWORK STATUS TEST RESULT: { PASSED }") end
  return true
 end
 M.net_status = net_status
@@ -148,6 +149,7 @@ local conn_test = function(int)
     util.wait() 
   end
   if (logger.log_lev >= 2) then logger.log(7,"BEGINNING INTERNET CONNECTION TEST INTERVAL: "..int) end
+  net_status()
   for i=1, int do
     local has_net = inet_test()
     if not has_net then
@@ -189,13 +191,18 @@ local set_client = function(ssid,enc,key,bssid,chn)
       logger.log(2,"{ set_client function } A UCI CONFIG HAS PENDING CHANGES ")
       util.wait() 
     end
+    uci:set("wireless","radio0","channel","auto")
     uci:set("wireless.@wifi-iface["..sec.."]=wifi-iface")
     uci:set("wireless.@wifi-iface["..sec.."].network=wwan")
     uci:set("wireless.@wifi-iface["..sec.."].ssid="..ssid)
     uci:set("wireless.@wifi-iface["..sec.."].encryption="..enc)
     uci:set("wireless.@wifi-iface["..sec.."].device="..dev)
     uci:set("wireless.@wifi-iface["..sec.."].mode=".."sta")
-    uci:set("wireless.@wifi-iface["..sec.."].bssid="..bssid)
+    if bssid == "00:00:00:00:00:00" then 
+      uci:delete("wireless.@wifi-iface["..sec.."].bssid")
+    else
+      uci:set("wireless.@wifi-iface["..sec.."].bssid="..bssid)
+    end
     uci:set("wireless.@wifi-iface["..sec.."].key="..key)
     uci:set("wireless.@wifi-iface["..sec.."].disabled=0")
     uci:commit("wireless")
@@ -220,7 +227,8 @@ local prep_client = function(ssid,bssid,chn)
   local enc = uci:get("wifimanager.@wifi["..sec.."].encrypt")
   local key = uci:get("wifimanager.@wifi["..sec.."].key")
   if (logger.log_lev > 2) then logger.log(7,"{prep_client func} SSID: "..ssid.."\tENCRYPTION: "..enc.."\tKEY: "..key) end
-
+  if not bssid then bssid = "00:00:00:00:00:00" end
+  if not chn then chn = "auto" end
   if set_client(ssid,enc,key,bssid,chn) then
     network_reload()
     nix.nanosleep(2,0)
@@ -269,9 +277,11 @@ M.find_network = find_network
 
 local sta_disable = function()
   if util.not_sane() then return false end
+    local ap_sec = util.uci_sec("ap","ap")
+    if (ap_sec < 0) then return true end
     local sec = util.uci_sec("sta","sta")
     local uci = uci.cursor()
-    local dis = tonumber(uci:get("wireless.@wifi-iface["..sec.."].disabled"))
+    local dis = tonumber(uci:get("wireless.@wifi-iface["..sec.."].disabled")) or 0
     logger.log(1,"{ find_network func } STA DISABLED UNTIL A USABLE NETWORK IS FOUND")
     if ( dis > 0 ) then return true end
     uci:set("wireless.@wifi-iface["..sec.."].disabled=1")
@@ -282,3 +292,4 @@ end
 M.sta_disable = sta_disable
 
 return M
+
