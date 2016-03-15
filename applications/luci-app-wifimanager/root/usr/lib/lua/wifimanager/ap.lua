@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER AP MODULE ]]--
 
---By Hostle 3/11/2016 { hostle@fire-wrt.com }
+--By Hostle 3/7/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
@@ -15,9 +15,9 @@ local util = require ("wifimanager.utils")
 local add_ap = function()
   local sec = util.uci_sec("ap","ap")
   local uci = uci.cursor()
-  local ap_ssid = uci:get("wifimanager.@ap[-1].ap_ssid")
-  local ap_enc = uci:get("wifimanager.@ap[-1].ap_encrypt")
-  local ap_key = uci:get("wifimanager.@ap[-1].ap_key")
+  local ap_ssid = uci:get("wifimanager","conn","ap_ssid")
+  local ap_enc =  uci:get("wifimanager","conn","ap_encrypt")
+  local ap_key =  uci:get("wifimanager","conn","ap_key")
   local dev = util.get_dev()
   local wsta = util.wifi_sta()
   if (sec >= 0) then return false end
