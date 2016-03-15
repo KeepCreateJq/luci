@@ -10,7 +10,7 @@ local mac = require ("wifimanager.mac")
 local net = require ("wifimanager.net")
 local sta = require ("wifimanager.sta")
 local util = require ("wifimanager.utils")
-
+local reload
 
 --## BOOT FUNCTION ##--
 -- wait for network to come up
@@ -43,9 +43,14 @@ local run = function(boot)
   end
   -- if boot then check for force net and random mac
   if boot then 
-    mac.check()
+    if mac.check() then reload = 1 end
     if fnet.check(ssid) then 
       return 0
+    else
+      if (reload > 0 ) then 
+        net.network_reload()
+        reload = 0
+      end
     end
   end
   -- test current sta is not disabled, if not then test for inet
