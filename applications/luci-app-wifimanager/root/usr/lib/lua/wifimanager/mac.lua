@@ -14,7 +14,7 @@ local nix = require ("nixio")
 --## RANDOM MAC ADDRESS ##--
 local randmac = function()
   local mac = sys.exec("dd if=/dev/urandom bs=1024 count=1 2>/dev/null|md5sum|sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\)\(..\).*$/00:\2:\3:\4:\5:01/'")
-  mac = string.format("%s:%s:%s:%s:%s:%s", mac:sub(0,2),mac:sub(3,4), mac:sub(6,7),mac:sub(9,10),mac:sub(12,13),mac:sub(15,16))
+  mac = string.format("02:%s:%s:%s:%s:%s", mac:sub(3,4), mac:sub(6,7),mac:sub(9,10),mac:sub(12,13),mac:sub(15,16))
   mac = mac:upper()
  return tostring(mac)
 end
