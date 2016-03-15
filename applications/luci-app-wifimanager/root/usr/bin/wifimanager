@@ -13,7 +13,7 @@ local logger = require ("wifimanager.logger")
 local mac = require ("wifimanager.mac")
 local nix = require ("nixio")
 local net = require ("wifimanager.status")
-
+local util = require ("wifimanager.utils")
 --## VERSION INFO ##--
 local version = "1.02"
 
@@ -32,7 +32,8 @@ local conn_int = tonumber(uci:get("wifimanager", "conn", "ConnCheckTimer"))
 --## MAIN THREAD ##--
 main = function()
  while true do
-    if net.sta_valid() then net_flag = 1 end
+    local ssid = util.get_ssid()
+    if net.sta_valid() and ssid ~= "DISABLED" then net_flag = 1 end
     --## INTAIAL BOOT, WAIT FOR NETWORK TO COME UP##--
     --## CONN THREAD ##--
     local c = os.difftime(os.time(),conn_time)
@@ -45,11 +46,16 @@ main = function()
       end
     end
     if (net_flag > 0) or (c >= conn_int) or (boot < 1) then
-      if (boot < 1) then logger.log(1,"STARTING WIFI MANAGER "..version) mac.check() end
-      local status = func.run()
-      net_flag = 0
-      boot = 1
-      if (verbose > 0) and status ~= false then 
+      if (boot < 1) then 
+        logger.log(1,"STARTING WIFI MANAGER "..version)
+        status = func.run("boot")
+        net_flag = 0
+        boot = 1
+      else
+        status = func.run()
+        net_flag = 0
+      end
+      if (verbose > 0) and status == 0 then 
         local msg ="ALL TASK FINISHED SUCCESSFULLY" io.write("\27[92m"..msg.."\27[0m\n")
         net_flag = 0 
       else
