@@ -12,7 +12,7 @@ local i = 1
 local version = sys.exec("wifimanager -s")
 
 uci:foreach("wifimanager", "wifi", function(s) nets[i]=s.ssid i = i + 1 end)
-local m, s, o
+local m, s, o, ap
 
 m = Map("wifimanager", translate("Wifi Manager "..version), translate("Here you can configure your Wifi Manager Settings"))
 
@@ -25,8 +25,8 @@ s.anonymous = true
 s.addremove = false
 
 s:tab("gen",  translate("GENERAL SETTINGS"))
-s:tab("wlan",  translate("WLAN SETTINGS"))
 s:tab("wwan",  translate("WWAN SETTINGS"))
+s:tab("wlan",  translate("WLAN SETTINGS"))
 
 
 --
@@ -43,15 +43,7 @@ end
 
 o = s:taboption("gen", Value, "net_tries", translate("Internet Check Retries"),
 	translate("The number of times Wifi Manager will ping before it disables the STAtion connection."))
-o.default = 3
-o.rmempty = false
-for i=1, 10 do
- o:value(i, i)
-end
-
-o = s:taboption("gen", Value, "boot_tries", translate("Boot Internet Retires"),
-	translate("The number of times WifiManager will ping before it disables the STAtion connection at boot time."))
-o.default = 5
+o.default = 6
 o.rmempty = false
 for i=1, 10 do
  o:value(i, i)
@@ -70,9 +62,35 @@ o = s:taboption("gen", Value, "PingLocation", translate("Ping Adddress"),
 o.default = "www.google.com"
 o.rmempty = false
 
-o = s:taboption("wlan", Flag, "ap_mode", translate("Auto Add AP"),
+ap = s:taboption("wlan", Flag, "ap_mode", translate("Auto Add AP"),
 	translate("Enables Wifi Manager to automatically replace a missing AP/Master configuration in the wireless config file"))
-o.rmempty = false
+ap.rmempty = false
+
+ap = s:taboption("wlan", Value, "ap_ssid", translate("SSID"),
+	translate("Enter the SSID for the AP"))
+ap.default = "Dummy"
+ap.rmempty = false
+
+ap = s:taboption("wlan", ListValue, "ap_encrypt", translate("Encyption Type"),
+	translate("Choose the encryption type for the AP "))
+ap.default = "none"
+ap.rmempty = false
+ap:value("none", "No Encryption")
+ap:value("wep-open", "Wep Open")
+ap:value("wep-shared", "No Wep Shared")
+ap:value("psk", "WPA-PSK")
+ap:value("psk2", "WPA-PSK2")
+ap:value("psk-mixed", "WPA-PSK/WPA2-PSK Mixed Mode")
+
+ap = s:taboption("wlan", Value, "ap_key", translate("Password"),
+	translate("Enter the Password for the AP"))
+ap.rmempty = true
+ap.password = true
+ap:depends("ap_encrypt", "wep-open")
+ap:depends("ap_encrypt", "wep-shared")
+ap:depends("ap_encrypt", "psk")
+ap:depends("ap_encrypt", "psk2")
+ap:depends("ap_encrypt", "psk-mixed")
 
 o = s:taboption("wwan", Flag, "new_nets", translate("Auto Add Networks"),
 	translate("Enables Wifi Manager to add a Luci-Wifi STAtion configuration to the Wifi Manager config, if not already included."))
