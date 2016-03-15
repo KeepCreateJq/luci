@@ -85,7 +85,7 @@ local check = function()
    local rmac = get_mac()
    local has_mac = check_mac()
 
-   if rmac and not has_mac then
+   if rmac then
      if util.has_pending() then util.wait() end
      add_mac()
      return true
