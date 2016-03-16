@@ -10,7 +10,7 @@ local mac = require ("wifimanager.mac")
 local net = require ("wifimanager.net")
 local sta = require ("wifimanager.sta")
 local util = require ("wifimanager.utils")
-local reload
+local reload = 0
 
 --## BOOT FUNCTION ##--
 -- wait for network to come up
@@ -21,6 +21,7 @@ local reload
 local run = function(boot)
   local uci = uci.cursor()
   local ssid = util.get_ssid() or "NO STA CONFIGURED"
+  local fn = uci:get("wifimanager", "conn", "force")
   local net_tries = tonumber(uci:get("wifimanager", "conn", "net_tries"))
   
   -- if no station switch to offline mode and wait for Luci to configure a station
@@ -44,33 +45,34 @@ local run = function(boot)
   -- if boot then check for force net and random mac
   if boot then 
     if mac.check() then reload = 1 end
-    if fnet.check(ssid) then 
-      return 0
-    else
-      if (reload > 0 ) then 
-        net.network_reload()
-        reload = 0
-      end
-    end
+   if fn then
+     if fnet.check(ssid) then 
+       return 0
+     else
+       if net.find_network(fn) then
+         return 0
+       end
+     end
+   end
+   if (reload > 0) then net.network_reload() end
   end
   -- test current sta is not disabled, if not then test for inet
   if ssid ~= "DISABLED" and net.conn_test(net_tries) then
       if(logger.log_lev == 1) then logger.log(1,"{ boot function } INTERNET CONNECTION TEST PASSED") end
       return 0
   else
-    -- current sta is disabled or does not have net, check for a new network
     if net.find_network(ssid) then
-      return 0
+         return 0
     else
-    -- check the sta is disabled 
+      -- check the sta is disabled 
       if net.sta_disable() then
         return 0
       else
-	return 1
+        return 1
       end
     end
   end
 end
 M.run = run
-
+run()
 return M
