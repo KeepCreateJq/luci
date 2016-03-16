@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER RANDOM MAC MODULE ]]--
 
---By Hostle 3/7/2016 { hostle@fire-wrt.com }
+--By Hostle 3/16/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
