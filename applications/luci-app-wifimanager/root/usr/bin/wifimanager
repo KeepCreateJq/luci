@@ -2,8 +2,31 @@
 
 --[[ WIFIMANGER DAEMON ]]--
 
--- Version 1.02.2
+-- Version 1.02
 -- By Hostle 3/13/2016
+
+local version = "1.02.2"
+local verbose = 0
+local debug = 0
+
+--## CMD LINE OPIONS ##--
+if #arg > 0 then
+  if arg[1] == "-h" then
+    print(help_msg)
+    os.exit(0)
+  elseif arg[1] == "-v" then
+    print("Verbose mode")
+    verbose = 1
+  elseif arg[1] == "-d" then
+    print("Debug mode")
+    debug = 1
+  elseif arg[1] == "-s" then
+    print(version)
+    os.exit(0)
+  else
+    print(help_msg)
+  end
+end
 
 --## DEPENDENTS ##--
 require ("uci")
@@ -11,14 +34,12 @@ local uci = uci.cursor()
 local func = require ("wifimanager.functions")
 local logger = require ("wifimanager.logger")
 local mac = require ("wifimanager.mac")
-local nix = require ("nixio")
 local net = require ("wifimanager.status")
+local nix = require ("nixio")
 local util = require ("wifimanager.utils")
 --## VERSION INFO ##--
-local version = "1.02.2"
 
 --## LOCAL FLAGS ##--
-local verbose = 0
 local boot = 0
 local net_flag = 0
 local status
@@ -46,7 +67,7 @@ main = function()
       end
     end
     if (net_flag > 0) or (c >= conn_int) or (boot < 1) then
-      if (boot < 1) then 
+      if (boot ~= 1) then 
         logger.log(1,"STARTING WIFI MANAGER "..version)
         status = func.run("boot")
         net_flag = 0
@@ -67,25 +88,6 @@ main = function()
   end
 end
 
---## CMD LINE OPIONS ##--
-if #arg > 0 then
-  if arg[1] == "-h" then
-    print(help_msg)
-    return
-  elseif arg[1] == "-v" then
-    print("Verbose mode")
-    verbose = 1
-  elseif arg[1] == "-d" then
-    print("Debug mode")
-    debug = 1
-  elseif arg[1] == "-s" then
-    print(version)
-    return
-  else
-    print(help_msg)
-  end
-end
-
 --## START OF PROGRAM ##--
 main_thread=coroutine.create(main)
 coroutine.resume(main_thread)
@@ -94,22 +96,23 @@ while coroutine.status(main_thread)~="dead" do
   if(verbose > 0 ) then
     print("\nCHECKING THREADS ...",select(2,coroutine.resume(main_thread)))
 
-    local mem = collectgarbage('count')*5.12
+    local mem = collectgarbage('count')*512 / 1000
     local tc 
-    if (mem >= 100900) and (mem <= 104999) then 
+    if (mem >= 107.9) and (mem <= 112.9) then 
       tc = 93
-    elseif (mem >= 105000) then
+    elseif (mem >= 112.9) then
       tc = 91
     else
       tc = 92
     end
+    mem = string.format("%.2f", mem)
     --## 91 red, 93 yellow, 92 green
     io.write("TOTAL MEMORY USAGE: ")
-    io.write("\27["..tc.."m( "..mem.." kb )\27[0m\n")
+    io.write("\27["..tc.."m( "..mem.." KB )\27[0m\n")
     collectgarbage()
-    nix.nanosleep(1,0)
+    nix.nanosleep(1)
   else
-    nix.nanosleep(1,0)
+    nix.nanosleep(1)
     select(2,coroutine.resume(main_thread))
     collectgarbage()
   end
