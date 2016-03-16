@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER FUNCTIONS MODULE ]]--
 
---By Hostle 3/7/2016 { hostle@fire-wrt.com }
+--By Hostle 3/16/2016 { hostle@fire-wrt.com }
 
 local M = {}
 local ap = require ("wifimanager.ap")
@@ -45,16 +45,28 @@ local run = function(boot)
   -- if boot then check for force net and random mac
   if boot then 
     if mac.check() then reload = 1 end
-   if fn then
-     if fnet.check(ssid) then 
-       return 0
-     else
-       if net.find_network(fn) then
+    if fn then
+      fn_state = fnet.check(ssid)
+
+      if fn_state == 0 and (reload > 0) then 
+         net.network_reload()
          return 0
-       end
-     end
-   end
-   if (reload > 0) then net.network_reload() end
+      elseif fn_state == 1 then
+        reload = 0
+        return 0
+      end
+    elseif ssid ~= "DISABLED" then
+        if (reload > 0) then net.network_reload() end
+        if net.conn_test(net_tries) then
+          if(logger.log_lev == 1) then logger.log(1,"{ boot function } INTERNET CONNECTION TEST PASSED") end
+          return 0
+        end
+    else
+      if net.find_network(fn) then
+        return 0
+      end
+    end
+    if (reload > 0) then net.network_reload() end
   end
   -- test current sta is not disabled, if not then test for inet
   if ssid ~= "DISABLED" and net.conn_test(net_tries) then
