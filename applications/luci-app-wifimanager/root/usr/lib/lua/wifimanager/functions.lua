@@ -86,5 +86,5 @@ local run = function(boot)
   end
 end
 M.run = run
-run()
+
 return M
