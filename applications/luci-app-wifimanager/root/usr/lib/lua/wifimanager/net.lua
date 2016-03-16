@@ -1,6 +1,6 @@
  --[[ WIFI MANAGER NETWORK MODULE ]]--
 
---By Hostle 3/7/2016 { hostle@fire-wrt.com }
+--By Hostle 3/16/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
@@ -58,7 +58,7 @@ local network_reload = function()
   end
   if (logger.log_lev > 0) then logger.log(6,"{network_reload func} RELOADING NETWORK") end
   sys.exec("/etc/init.d/network reload")
-  nix.nanosleep(3,0)
+  nix.nanosleep(5,0)
   if (logger.log_lev > 0) then logger.log(6,"{network_reload func} NETWORK RELOADED SUCCESSFULLY") end
  return
 end
@@ -86,9 +86,9 @@ M.net_up = net_up
 
 local net_status = function(no_sta)
   local uci = uci.cursor()
+  local timeout = 0
   if no_sta then
     local sec = util.uci_sec("ap","ap")
-    if (sec < 0) then ap.add_ap() end
     local sta = util.uci_sec("sta","sta")
     logger.log(6,"{ net_status func } NO STA AVAIABLE CHECK SETTINGS !!")
     while (sta < 0) do
@@ -106,7 +106,10 @@ local net_status = function(no_sta)
     else
       if (logger.log_lev > 1 ) then logger.log(6,"{net_status func} WAITING FOR NETWORK TO COME UP ...") end
       while not net do
+        if (timeout >= 25) then break end
         net = net_up()
+        logger.log(6,"{net_status func} TIMEOUT [ "..timeout.." of  25 ]")
+        timeout = timeout + 1
         nix.nanosleep(2,0)
       end
     end
@@ -173,6 +176,15 @@ local conn_test = function(int)
 end
 M.conn_test = conn_test
 
+local set_firewall = function()
+  local sec = util.uci_sec("fw","wan")
+  local uci = uci.cursor()
+  uci:set("firewall.@zone["..sec.."].network=wan wan6 wwan")
+  uci:commit("firewall")
+ return
+end
+M.set_firewall = set_firewall
+
 --## ADD THE NETWORK TO THE WIRELESS CONFIG ENABLE IT ##--
 local set_client = function(ssid,enc,key,bssid,chn)
   if util.not_sane() then return end
@@ -186,25 +198,32 @@ local set_client = function(ssid,enc,key,bssid,chn)
     local sec = util.uci_sec("sta","sta")
     local uci = uci.cursor()
     local dev = util.get_dev()
+    local auto = uci:get("wireless","radio0","channel")
     if util.not_sane() then return false end
     if util.has_pending() then 
       logger.log(2,"{ set_client function } A UCI CONFIG HAS PENDING CHANGES ")
       util.wait() 
     end
-    uci:set("wireless","radio0","channel","auto")
-    uci:set("wireless.@wifi-iface["..sec.."]=wifi-iface")
-    uci:set("wireless.@wifi-iface["..sec.."].network=wwan")
-    uci:set("wireless.@wifi-iface["..sec.."].ssid="..ssid)
-    uci:set("wireless.@wifi-iface["..sec.."].encryption="..enc)
-    uci:set("wireless.@wifi-iface["..sec.."].device="..dev)
-    uci:set("wireless.@wifi-iface["..sec.."].mode=".."sta")
-    if bssid == "00:00:00:00:00:00" then 
-      uci:delete("wireless.@wifi-iface["..sec.."].bssid")
-    else
-      uci:set("wireless.@wifi-iface["..sec.."].bssid="..bssid)
+    --set_firewall("wan")
+    uci:delete("wireless.@wifi-iface["..sec.."]=wifi-iface")
+    if auto ~= "auto" then 
+      uci:set("wireless","radio0","channel","auto")
     end
-    uci:set("wireless.@wifi-iface["..sec.."].key="..key)
-    uci:set("wireless.@wifi-iface["..sec.."].disabled=0")
+    uci:add("wireless", "wifi-iface")
+    if bssid == "00:00:00:00:00:00" then 
+      uci:delete("wireless.@wifi-iface[-1].bssid")
+    else
+      uci:set("wireless.@wifi-iface[-1].bssid="..bssid)
+    end
+    uci:set("wireless.@wifi-iface[-1].device="..dev)
+    uci:set("wireless.@wifi-iface[-1].encryption="..enc)
+    if enc ~= "none" then
+      uci:set("wireless.@wifi-iface[-1].key="..key)
+    end
+    uci:set("wireless.@wifi-iface[-1].mode=sta")
+    uci:set("wireless.@wifi-iface[-1].network=wwan")
+    uci:set("wireless.@wifi-iface[-1].ssid="..ssid)
+    uci:set("wireless.@wifi-iface[-1].disabled=0")
     uci:commit("wireless")
     if (logger.log_lev > 1) then logger.log(6,"{set_client func} SETTING UP NEW STA { PASSED } ") end
     return true
