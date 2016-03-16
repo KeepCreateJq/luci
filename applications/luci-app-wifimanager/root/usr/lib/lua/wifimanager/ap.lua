@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER AP MODULE ]]--
 
---By Hostle 3/7/2016 { hostle@fire-wrt.com }
+--By Hostle 3/16/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
@@ -31,13 +31,13 @@ local add_ap = function()
     logger.log(1,"{add_ap func} ADDING AP { "..ap_ssid.." }")
     uci:add("wireless", "wifi-iface")
     uci:set("wireless.@wifi-iface[-1].device="..dev)
-    uci:set("wireless.@wifi-iface[-1].mode=ap")
-    uci:set("wireless.@wifi-iface[-1].network=lan")
-    uci:set("wireless.@wifi-iface[-1].ssid="..ap_ssid)
     uci:set("wireless.@wifi-iface[-1].encryption="..ap_enc)
     if ap_enc ~= "none" then
       uci:set("wireless.@wifi-iface[-1].key="..ap_key)
     end
+    uci:set("wireless.@wifi-iface[-1].mode=ap")
+    uci:set("wireless.@wifi-iface[-1].network=lan")
+    uci:set("wireless.@wifi-iface[-1].ssid="..ap_ssid)
     uci:commit("wireless")
     nix.nanosleep(1,0)
     logger.log(1,"{add_ap func} AP [ "..ap_ssid.." ] CONFIGURED SUCCESSFULLY")
