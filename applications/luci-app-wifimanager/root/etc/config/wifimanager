@@ -1,15 +1,16 @@
 config set 'conn'
-	option ConnCheckTimer '30'
+	option ConnCheckTimer '20'
 	option net_tries '5'
 	option log_lev '2'
 	option PingLocation 'www.google.com'
-	option ap_mode '1'
+	option fnet '0'
 	option new_nets '0'
 	option randMac '0'
-	option ap_ssid 'Dummy1'
+	option ap_mode '0'
+	option ap_ssid 'Dummy'
 	option ap_encrypt 'psk'
 	option ap_key '12345678'
-
+	
 config wifi
 	option ssid 'Dummy1'
 	option encrypt 'psk'
