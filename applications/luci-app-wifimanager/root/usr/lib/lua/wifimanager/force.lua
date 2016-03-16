@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER FORCE NETWORK MODULE ]]--
 
---By Hostle 3/7/2016 { hostle@fire-wrt.com }
+--By Hostle 3/16/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
@@ -21,19 +21,19 @@ local check = function(ssid)
   local fn = get_fnet()
   if fn and fn == ssid then
     if (logger.log_lev > 1) then logger.log(7,"FORCED NETWORK IS SET [ "..fn.." ] AND CONFIGURED") end
-    return false
+    return 0
   elseif fn then
     logger.log(7,"ATTEMPTING TO CONFIGURE FORCED NETWORK [ "..fn.." ]")
     if net.prep_client(fn) then
       logger.log(7,"FORCE NETWORK IS SET [ "..fn.." ] AND CONFIGURED")
-      return true
+      return 1
     else
      logger.log(7,"FAILED TO CONFIGURE FORCED NETWORK [ "..fn.." ]")
-      return false
+      return 2
     end
   else
     if (logger.log_lev > 2) then logger.log(7,"{ fnet_check function } FORCE NETWORK NOT SET") end
-    return false
+    return 3
   end
 end
 M.check = check
