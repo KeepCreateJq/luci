@@ -111,7 +111,7 @@ local net_status = function(no_sta)
       end
     end
     nix.nanosleep(2,0)
-    if (logger.log_lev >= 2 ) then logger.log(6,"{net_status func} NETWORK STATUS TEST RESULT: { PASSED }") end
+    --if (logger.log_lev >= 2 ) then logger.log(6,"{net_status func} NETWORK STATUS TEST RESULT: { PASSED }") end
  return true
 end
 M.net_status = net_status
@@ -259,6 +259,7 @@ local find_network = function(ssid)
   for i,v in ipairs(ssta) do
    if not ssid or v[1] ~= ssid then
     if lutil.contains(csta, v[1]) then
+      nix.nanosleep(0,6)
       logger.log(1,"{find_network func} FOUND A MATCH [ SSID: "..v[1].." SIGNAL: "..v[4]:gsub("-",""))
       if prep_client(v[1],v[2],v[3]) then
         logger.log(1,"{find_network func} NETWORK: [ "..v[1].." ] HAS BEEN CONFIGURED SUCCESSFULLY")
@@ -292,4 +293,3 @@ end
 M.sta_disable = sta_disable
 
 return M
-
