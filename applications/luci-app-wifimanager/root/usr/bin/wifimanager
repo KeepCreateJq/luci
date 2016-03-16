@@ -2,7 +2,7 @@
 
 --[[ WIFIMANGER DAEMON ]]--
 
--- Version 1.02
+-- Version 1.02.2
 -- By Hostle 3/13/2016
 
 --## DEPENDENTS ##--
@@ -15,7 +15,7 @@ local nix = require ("nixio")
 local net = require ("wifimanager.status")
 local util = require ("wifimanager.utils")
 --## VERSION INFO ##--
-local version = "1.02"
+local version = "1.02.2"
 
 --## LOCAL FLAGS ##--
 local verbose = 0
@@ -89,7 +89,6 @@ end
 --## START OF PROGRAM ##--
 main_thread=coroutine.create(main)
 coroutine.resume(main_thread)
-print(coroutine.status(main_thread))
 --## VERBOSE OUTPUT ##--
 while coroutine.status(main_thread)~="dead" do
   if(verbose > 0 ) then
