@@ -29,6 +29,7 @@ local check = function(ssid)
       return true
     else
      logger.log(7,"FAILED TO CONFIGURE FORCED NETWORK [ "..fn.." ]")
+      return false
     end
   else
     if (logger.log_lev > 2) then logger.log(7,"{ fnet_check function } FORCE NETWORK NOT SET") end
