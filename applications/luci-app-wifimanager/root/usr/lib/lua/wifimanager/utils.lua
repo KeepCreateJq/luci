@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER UTILITIES MODULE ]]--
 
---By Hostle 3/7/2016 { hostle@fire-wrt.com }
+--By Hostle 3/16/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
@@ -19,6 +19,8 @@ local uci_sec = function(conf,val)
   repeat
     if conf == "wmgr" then
 	  sec = uci:get("wifimanager.@wifi["..i.."].ssid")
+        elseif conf == "fw" then
+	  sec = uci:get("firewall.@zone[1].name")
 	else
 	  sec = uci:get("wireless.@wifi-iface["..i.."].mode")
 	end
@@ -37,6 +39,8 @@ local uci_sec = function(conf,val)
  end
 end
 M.uci_sec = uci_sec
+
+
 
 --## LOAD STA NETWORKS FROM CONFIG INTO TABLE ##--
 local config_sta = function()
@@ -80,13 +84,14 @@ local has_pending = function(sta)
 end
 M.has_pending = has_pending
 
-local wait = function()
+local wait = function(sta)
   logger.log(2,"{ has_pending function } WAITING FOR UCI COMMIT ")
-  local task = has_pending
+  local task = has_pending(sta)
   while task do
-   task = has_pending()
+   task = has_pending(sta)
    nix.nanosleep(1,0)
   end
+ nix.nanosleep(2,0)
  return true
 end
 M.wait = wait
