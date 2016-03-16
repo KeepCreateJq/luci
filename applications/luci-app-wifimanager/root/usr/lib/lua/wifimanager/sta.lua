@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER STATION MODULE ]]--
 
--- By Hostle 3/7/2016 { hostle@fire-wrt.com }
+-- By Hostle 3/16/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
@@ -14,7 +14,7 @@ local add_sta = function()
   if util.not_sane() then return false end
   if util.has_pending("wifimanager") then 
     logger.log(2,"{ add_sta function } A UCI CONFIG HAS PENDING CHANGES ")
-    util.wait() 
+    util.wait("wifimanager") 
   end
   local sec = util.uci_sec("sta","sta")
   local uci = uci.cursor()
@@ -25,9 +25,10 @@ local add_sta = function()
 
   if not lutil.contains(csta, essid) then
   if util.not_sane() then return false end
-  if util.has_pending() then 
+  if util.has_pending("wifimanager") then 
     logger.log(2,"{ add_sta function } A UCI CONFIG HAS PENDING CHANGES ")
-    util.wait() 
+    util.wait("wifimanager")
+   
   end
     uci:add("wifimanager", "wifi")
     uci:commit("wifimanager")
