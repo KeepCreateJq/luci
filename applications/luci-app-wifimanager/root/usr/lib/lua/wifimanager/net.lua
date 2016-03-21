@@ -101,7 +101,7 @@ local net_status = function(no_sta)
     if (logger.log_lev > 2) then logger.log(7,"{net_status func} NETWORK: { WWAN }") end
     local net = net_up()
     if net then 
-      if (logger.log_lev > 1 ) then logger.log(6,"{net_status func} NETWORK STATUS TEST RESULT: { PASSED }") end
+      if (logger.log_lev == 3 ) then logger.log(6,"{net_status func} NETWORK STATUS TEST RESULT: { PASSED }") end
       return true
     else
       if (logger.log_lev > 1 ) then logger.log(6,"{net_status func} WAITING FOR NETWORK TO COME UP ...") end
@@ -204,7 +204,7 @@ local set_client = function(ssid,enc,key,bssid,chn)
       logger.log(2,"{ set_client function } A UCI CONFIG HAS PENDING CHANGES ")
       util.wait() 
     end
-    --set_firewall("wan")
+    set_firewall("wan")
     uci:delete("wireless.@wifi-iface["..sec.."]=wifi-iface")
     if auto ~= "auto" then 
       uci:set("wireless","radio0","channel","auto")
@@ -245,15 +245,13 @@ local prep_client = function(ssid,bssid,chn)
   if (logger.log_lev > 2) then logger.log(6,"{prep_client func} PREPARING NEW CLIENT [ "..ssid.." ]") end
   local enc = uci:get("wifimanager.@wifi["..sec.."].encrypt")
   local key = uci:get("wifimanager.@wifi["..sec.."].key")
+  print(key)
   if (logger.log_lev > 2) then logger.log(7,"{prep_client func} SSID: "..ssid.."\tENCRYPTION: "..enc.."\tKEY: "..key) end
   if not bssid then bssid = "00:00:00:00:00:00" end
   if not chn then chn = "auto" end
   if set_client(ssid,enc,key,bssid,chn) then
     network_reload()
     nix.nanosleep(2,0)
-    repeat
-        local up = net_status()
-    until up
     if conn_test(get_tries()) then
       return true
     end
