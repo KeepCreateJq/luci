@@ -2,10 +2,10 @@
 
 --[[ WIFIMANGER DAEMON ]]--
 
--- Version 1.03
--- By Hostle 3/16/2016
+-- Version 1.02
+-- By Hostle 3/21/2016
 
-local version = "1.02.3"
+local version = "1.02.4"
 local verbose = 0
 local debug = 0
 
