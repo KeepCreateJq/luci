@@ -84,16 +84,16 @@ local check = function()
    if rmac then
      if util.has_pending() then util.wait() end
      add_mac()
-     return true
+     return 1
    elseif not rmac and has_mac then
      if util.has_pending() then 
        logger.log(2,"{ mac check function } A UCI CONFIG HAS PENDING CHANGES ")
        util.wait() 
      end
      remove_mac()
-     return true
+     return 1
   else
-    return false
+    return 0
   end
 end
 M.check = check
