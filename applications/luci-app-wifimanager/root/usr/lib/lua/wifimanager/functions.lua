@@ -1,16 +1,15 @@
 --[[ WIFI MANAGER FUNCTIONS MODULE ]]--
 
---By Hostle 3/16/2016 { hostle@fire-wrt.com }
+--By Hostle 3/21/2016 { hostle@fire-wrt.com }
 
 local M = {}
-local ap = require ("wifimanager.ap")
 local fnet = require ("wifimanager.force")
 local logger = require ("wifimanager.logger")
 local mac = require ("wifimanager.mac")
 local net = require ("wifimanager.net")
-local sta = require ("wifimanager.sta")
 local util = require ("wifimanager.utils")
 local reload = 0
+local fn_state = false
 
 --## BOOT FUNCTION ##--
 -- wait for network to come up
@@ -44,46 +43,36 @@ local run = function(boot)
   end
   -- if boot then check for force net and random mac
   if boot then 
-    if mac.check() then reload = 1 end
+    local reload = mac.check()
     if fn then
       fn_state = fnet.check(ssid)
 
       if fn_state == 0 and (reload > 0) then 
          net.network_reload()
-         return 0
+         relaod = 0
       elseif fn_state == 1 then
+        return 0
+      elseif fn_state == 2 then
+        relaod = 0
+      elseif fn_state == 3 and (reload > 0 ) then 
+        net.network_reload()  
         reload = 0
-        return 0
       end
-    elseif ssid ~= "DISABLED" then
-        if (reload > 0) then net.network_reload() end
-        if net.conn_test(net_tries) then
-          if(logger.log_lev == 1) then logger.log(1,"{ boot function } INTERNET CONNECTION TEST PASSED") end
-          return 0
-        end
-    else
-      if net.find_network(fn) then
-        return 0
-      end
+    elseif (reload > 0 ) then
+      net.network_reload()  
+       reload = 0
     end
-    if (reload > 0) then net.network_reload() end
   end
-  -- test current sta is not disabled, if not then test for inet
-  if ssid ~= "DISABLED" and net.conn_test(net_tries) then
-      if(logger.log_lev == 1) then logger.log(1,"{ boot function } INTERNET CONNECTION TEST PASSED") end
+
+  if fn_state ~= 2 and ssid ~= "DISABLED" and net.conn_test(net_tries) then
+    if(logger.log_lev == 1) then logger.log(1,"{ boot function } INTERNET CONNECTION TEST PASSED") end
       return 0
-  else
-    if net.find_network(ssid) then
-         return 0
-    else
-      -- check the sta is disabled 
-      if net.sta_disable() then
-        return 0
-      else
-        return 1
-      end
-    end
   end
+
+  if net.find_network(ssid) then
+    return 0
+  end
+  return 1 
 end
 M.run = run
 
