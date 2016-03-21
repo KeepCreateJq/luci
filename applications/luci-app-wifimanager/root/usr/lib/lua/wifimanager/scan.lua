@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER SCAN MODULE ]]--
 
---By Hostle 3/16/2016 { hostle@fire-wrt.com }
+--By Hostle 3/21/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
