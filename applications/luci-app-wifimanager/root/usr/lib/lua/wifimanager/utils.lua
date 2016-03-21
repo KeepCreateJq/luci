@@ -1,6 +1,6 @@
 --[[ WIFI MANAGER UTILITIES MODULE ]]--
 
---By Hostle 3/16/2016 { hostle@fire-wrt.com }
+--By Hostle 3/21/2016 { hostle@fire-wrt.com }
 
 local M = {}
 
@@ -20,7 +20,7 @@ local uci_sec = function(conf,val)
     if conf == "wmgr" then
 	  sec = uci:get("wifimanager.@wifi["..i.."].ssid")
         elseif conf == "fw" then
-	  sec = uci:get("firewall.@zone[1].name")
+	  sec = uci:get("firewall.@zone["..i.."].name")
 	else
 	  sec = uci:get("wireless.@wifi-iface["..i.."].mode")
 	end
