@@ -4,6 +4,11 @@
 	<%- end %>
 	<div class="cbi-section-descr"><%=self.description%></div>
 	<% local isempty = true for i, k in ipairs(self:cfgsections()) do -%>
+		<% if self.addremove then -%>
+			<div class="cbi-section-remove right">
+				<input type="submit" name="cbi.rts.<%=self.config%>.<%=k%>" onclick="this.form.cbi_state='del-section'; return true" value="<%:Delete%>" class="cbi-button" />
+			</div>
+		<%- end %>
 
 		<%- section = k; isempty = false -%>
 
@@ -17,16 +22,12 @@
 			<%+cbi/ucisection%>
 		</fieldset>
 		<br />
+	<%- end %>
 
 	<% if isempty then -%>
 		<em><%:This section contains no values yet%><br /><br /></em>
 	<%- end %>
-	<% if self.addremove then -%>
-		<div class="cbi-section-remove right">
-			<input type="submit" name="cbi.rts.<%=self.config%>.<%=k%>" onclick="this.form.cbi_state='del-section'; return true" value="<%:Delete%>" class="cbi-button" />
-		</div>
-	<%- end %>
-	<%- end %>
+
 	<% if self.addremove then -%>
 		<% if self.template_addremove then include(self.template_addremove) else -%>
 		<div class="cbi-section-create">
