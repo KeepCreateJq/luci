@@ -130,12 +130,6 @@ msgstr "<abbr title=\"Максимум\">Max.</abbr> одночасних зап
 msgid "<abbr title='Pairwise: %s / Group: %s'>%s - %s</abbr>"
 msgstr "<abbr title='Парний: %s / Груповий: %s'>%s - %s</abbr>"
 
-msgid "ADSL"
-msgstr ""
-
-msgid "ADSL Status"
-msgstr ""
-
 msgid "AICCU (SIXXS)"
 msgstr ""
 
@@ -236,6 +230,14 @@ msgstr "Додаткові параметри"
 
 msgid "Alert"
 msgstr "Тривога"
+
+msgid ""
+"Allocate IP addresses sequentially, starting from the lowest available "
+"address"
+msgstr ""
+
+msgid "Allocate IP sequentially"
+msgstr ""
 
 msgid "Allow <abbr title=\"Secure Shell\">SSH</abbr> password authentication"
 msgstr ""
@@ -654,6 +656,9 @@ msgstr "Типово %d"
 
 msgid "Default gateway"
 msgstr "Типовий шлюз"
+
+msgid "Default is stateless + stateful"
+msgstr ""
 
 msgid "Default route"
 msgstr ""
@@ -1516,7 +1521,7 @@ msgstr ""
 msgid "Localise queries"
 msgstr "Локалізувати запити"
 
-msgid "Locked to channel %d used by: %s"
+msgid "Locked to channel %s used by: %s"
 msgstr ""
 
 msgid "Log output level"
@@ -2499,6 +2504,12 @@ msgstr "Строгий порядок"
 msgid "Submit"
 msgstr "Надіслати"
 
+msgid "Suppress logging"
+msgstr ""
+
+msgid "Suppress logging of the routine operation of these protocols"
+msgstr ""
+
 msgid "Swap"
 msgstr ""
 
@@ -3295,6 +3306,12 @@ msgstr "не визначено -або- створити"
 
 msgid "untagged"
 msgstr "без позначки"
+
+msgid "xDSL"
+msgstr ""
+
+msgid "xDSL Status"
+msgstr ""
 
 msgid "yes"
 msgstr "так"

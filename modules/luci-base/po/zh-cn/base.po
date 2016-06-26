@@ -114,12 +114,6 @@ msgstr "<abbr title=\"maximal\">最大</abbr>并发查询数"
 msgid "<abbr title='Pairwise: %s / Group: %s'>%s - %s</abbr>"
 msgstr "<abbr title='Pairwise: %s / Group: %s'>%s - %s</abbr>"
 
-msgid "ADSL"
-msgstr "ADSL"
-
-msgid "ADSL Status"
-msgstr "ADSL状态"
-
 msgid "AICCU (SIXXS)"
 msgstr ""
 
@@ -214,6 +208,14 @@ msgstr "高级设置"
 
 msgid "Alert"
 msgstr "警戒"
+
+msgid ""
+"Allocate IP addresses sequentially, starting from the lowest available "
+"address"
+msgstr ""
+
+msgid "Allocate IP sequentially"
+msgstr ""
 
 msgid "Allow <abbr title=\"Secure Shell\">SSH</abbr> password authentication"
 msgstr "允许<abbr title=\"Secure Shell\">SSH</abbr>密码验证"
@@ -615,6 +617,9 @@ msgstr "默认%d"
 
 msgid "Default gateway"
 msgstr "默认网关"
+
+msgid "Default is stateless + stateful"
+msgstr ""
 
 msgid "Default route"
 msgstr "默认路由"
@@ -1431,8 +1436,8 @@ msgstr "如果有多个IP可用，则根据请求来源的子网来本地化主�
 msgid "Localise queries"
 msgstr "本地化查询"
 
-msgid "Locked to channel %d used by: %s"
-msgstr "信道道已被锁定为 %d,因为该信道被 %s 使用"
+msgid "Locked to channel %s used by: %s"
+msgstr "信道道已被锁定为 %s,因为该信道被 %s 使用"
 
 msgid "Log output level"
 msgstr "日志记录等级"
@@ -2384,6 +2389,12 @@ msgstr "严谨查序"
 msgid "Submit"
 msgstr "提交"
 
+msgid "Suppress logging"
+msgstr ""
+
+msgid "Suppress logging of the routine operation of these protocols"
+msgstr ""
+
 msgid "Swap"
 msgstr "交换区"
 
@@ -3133,6 +3144,12 @@ msgstr "未指定 // 创建:"
 
 msgid "untagged"
 msgstr "不关联"
+
+msgid "xDSL"
+msgstr "xDSL"
+
+msgid "xDSL Status"
+msgstr "xDSL状态"
 
 msgid "yes"
 msgstr "是"

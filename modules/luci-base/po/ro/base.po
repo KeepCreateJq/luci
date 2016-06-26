@@ -115,12 +115,6 @@ msgstr "<abbr title=\"maximal\">Max.</abbr> interogari simultane"
 msgid "<abbr title='Pairwise: %s / Group: %s'>%s - %s</abbr>"
 msgstr "<abbr title='Pairwise: %s / Group: %s'>%s - %s</abbr>"
 
-msgid "ADSL"
-msgstr ""
-
-msgid "ADSL Status"
-msgstr ""
-
 msgid "AICCU (SIXXS)"
 msgstr ""
 
@@ -216,6 +210,14 @@ msgstr "Setari avansate"
 
 msgid "Alert"
 msgstr "Alerta"
+
+msgid ""
+"Allocate IP addresses sequentially, starting from the lowest available "
+"address"
+msgstr ""
+
+msgid "Allocate IP sequentially"
+msgstr ""
 
 msgid "Allow <abbr title=\"Secure Shell\">SSH</abbr> password authentication"
 msgstr ""
@@ -618,6 +620,9 @@ msgid "Default %d"
 msgstr ""
 
 msgid "Default gateway"
+msgstr ""
+
+msgid "Default is stateless + stateful"
 msgstr ""
 
 msgid "Default route"
@@ -1435,7 +1440,7 @@ msgstr ""
 msgid "Localise queries"
 msgstr ""
 
-msgid "Locked to channel %d used by: %s"
+msgid "Locked to channel %s used by: %s"
 msgstr ""
 
 msgid "Log output level"
@@ -2373,6 +2378,12 @@ msgstr ""
 msgid "Submit"
 msgstr "Trimite"
 
+msgid "Suppress logging"
+msgstr ""
+
+msgid "Suppress logging of the routine operation of these protocols"
+msgstr ""
+
 msgid "Swap"
 msgstr ""
 
@@ -3095,6 +3106,12 @@ msgstr ""
 
 msgid "untagged"
 msgstr "neetichetat"
+
+msgid "xDSL"
+msgstr ""
+
+msgid "xDSL Status"
+msgstr ""
 
 msgid "yes"
 msgstr "da"

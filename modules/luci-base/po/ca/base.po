@@ -119,12 +119,6 @@ msgstr "Consultes concurrents <abbr title=\"màximes\">max.</abbr>"
 msgid "<abbr title='Pairwise: %s / Group: %s'>%s - %s</abbr>"
 msgstr "<abbr title='Parella: %s / Grup: %s'>%s - %s</abbr>"
 
-msgid "ADSL"
-msgstr ""
-
-msgid "ADSL Status"
-msgstr ""
-
 msgid "AICCU (SIXXS)"
 msgstr ""
 
@@ -221,6 +215,14 @@ msgstr "Paràmetres avançats"
 
 msgid "Alert"
 msgstr "Alerta"
+
+msgid ""
+"Allocate IP addresses sequentially, starting from the lowest available "
+"address"
+msgstr ""
+
+msgid "Allocate IP sequentially"
+msgstr ""
 
 msgid "Allow <abbr title=\"Secure Shell\">SSH</abbr> password authentication"
 msgstr ""
@@ -632,6 +634,9 @@ msgstr "%d per defecte"
 
 msgid "Default gateway"
 msgstr "Passarel·la per defecte"
+
+msgid "Default is stateless + stateful"
+msgstr ""
 
 msgid "Default route"
 msgstr ""
@@ -1465,7 +1470,7 @@ msgstr ""
 msgid "Localise queries"
 msgstr "Localitza les peticions"
 
-msgid "Locked to channel %d used by: %s"
+msgid "Locked to channel %s used by: %s"
 msgstr ""
 
 msgid "Log output level"
@@ -2413,6 +2418,12 @@ msgstr "Ordre estricte"
 msgid "Submit"
 msgstr "Envia"
 
+msgid "Suppress logging"
+msgstr ""
+
+msgid "Suppress logging of the routine operation of these protocols"
+msgstr ""
+
 msgid "Swap"
 msgstr ""
 
@@ -3174,6 +3185,12 @@ msgstr "sense espeficicar -o- crear:"
 
 msgid "untagged"
 msgstr "sense etiquetar"
+
+msgid "xDSL"
+msgstr ""
+
+msgid "xDSL Status"
+msgstr ""
 
 msgid "yes"
 msgstr "sí"
